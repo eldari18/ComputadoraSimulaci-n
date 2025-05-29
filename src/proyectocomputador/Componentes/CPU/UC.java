@@ -9,5 +9,15 @@ package proyectocomputador.Componentes.CPU;
  * @author 57313
  */
 public class UC {
-    
+
+    private String instruccionActual; // Instrucción decodificada
+
+    public void decodificar(String instruccion) {
+        this.instruccionActual = instruccion;
+        // Lógica de decodificación...
+    }
+
+    public String getInstruccionActual() {
+        return instruccionActual;
+    }
 }

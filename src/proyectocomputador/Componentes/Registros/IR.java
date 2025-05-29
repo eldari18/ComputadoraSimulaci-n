@@ -9,5 +9,14 @@ package proyectocomputador.Componentes.Registros;
  * @author 57313
  */
 public class IR {
-    
+
+    private int instruccion; // Instrucción actual
+
+    public void cargar(int instruccion) {
+        this.instruccion = instruccion;
+    }
+
+    public int getInstruccion() {
+        return instruccion;
+    }
 }
