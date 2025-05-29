@@ -14,7 +14,7 @@ import proyectocomputador.Componentes.Buses.BusDirecciones;
 
 /**
  *
- * @author 57313
+ * @author 5731
  */
 public class Buses {
 
