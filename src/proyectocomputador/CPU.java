@@ -31,7 +31,7 @@ public class CPU {
         pc = new PC();
         alu = new ALU();
         uc = new UC();
-        registros = new BancoRegistros(4); // 4 registros
+        registros = new BancoRegistros(); // 4 registros
         ir = new IR();
         mar = new MAR();
         mbr = new MBR();

@@ -7,11 +7,18 @@ package proyectocomputador;
 import proyectocomputador.Buses;
 import proyectocomputador.CPU;
 import proyectocomputador.Memoria;
+import proyectocomputador.Registros;
 import Utils.Utils;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Image;
 import java.io.File;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JTable;
+import javax.swing.Timer;
+import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  *
@@ -22,7 +29,17 @@ public class Computador extends javax.swing.JPanel {
     private Buses buses;
     private CPU cpu;
     private Memoria memoria;
+    private Registros registro;
     private Utils utils;
+
+    private static final String[] CODIGOS_OPERACION = {"ADD", "SUB", "MPY", "DIV", "CMP", "MOV", "JMP", "JZ", "JNZ", "LOAD", "RET"};
+    private static final String PATRON_REGISTRO = "(AX|BX|CX|DX|SI|DI|SP|BP)";
+    private static final String PATRON_DIRECCION = "\\[(1[0-5]|[0-9])\\]";
+    private static final String PATRON_NUMERO_SIMPLE = "(5[0-1][0-9]|[1-4][0-9][0-9]|[1-9][0-9]|[0-9])";
+    private static final String PATRON_OPERANDO = "(" + PATRON_REGISTRO + "|" + PATRON_DIRECCION + "|" + PATRON_NUMERO_SIMPLE + ")";
+    private static final String PATRON_INSTRUCCION = "^(" + String.join("|", CODIGOS_OPERACION) + ")\\s+"
+            + PATRON_OPERANDO + "\\s*,\\s*" + PATRON_OPERANDO
+            + "(\\s*,\\s*" + PATRON_OPERANDO + ")?$";
 
     /**
      * Creates new form NewJPanel
@@ -30,6 +47,7 @@ public class Computador extends javax.swing.JPanel {
     public Computador() {
         initComponents();
         logo();
+        inicializarComponentes();
     }
 
     private void setScaledIcon(JLabel label, String imagePath, int width, int height) {
@@ -45,12 +63,268 @@ public class Computador extends javax.swing.JPanel {
 
         File testFile = new File(ruta);
         if (testFile.exists()) {
-            setScaledIcon(this.ImageALU1, ruta + "ALU1.png", 80, 80);
-            setScaledIcon(this.ImageALU2, ruta + "ALU2.png", 80, 80);
+            setScaledIcon(this.ImageALU1, ruta + "ALU1.png", 160, 80);
+            setScaledIcon(this.ImageALU2, ruta + "ALU2.png", 150, 80);
             return;
         }
         System.err.println("No se encontró la carpeta IMAGES");
     }
+
+    private void inicializarComponentes() {
+        // Inicializar componentes
+        memoria = new Memoria();
+
+        ButtonEjecutar.addActionListener(e -> cargarInstrucciones());
+
+        // Configurar tabla de datos
+        memoria.configurarTablaDatos(TableDatos);
+        memoria.configurarTablaProgramas(TableProgramas);
+
+        // Escribir algunos valores de ejemplo
+        memoria.escribirDato(0, 10);
+        memoria.escribirDato(1, 255);
+        memoria.escribirDato(2, 128);
+        memoria.escribirDato(3, 85);
+        memoria.escribirDato(4, 170);
+        memoria.escribirDato(5, 15);
+        memoria.escribirDato(6, 240);
+        memoria.escribirDato(7, 63);
+        memoria.escribirDato(8, 127);
+        memoria.escribirDato(9, 1);
+        memoria.escribirDato(10, 254);
+        memoria.escribirDato(11, 51);
+        memoria.escribirDato(12, 204);
+        memoria.escribirDato(13, 0);
+        memoria.escribirDato(14, 255);
+        memoria.escribirDato(15, 7);
+
+        memoria.escribirPrograma(0, "MOV A, 5", "Programa1");
+        memoria.escribirPrograma(1, "ADD A, B", "Programa1");
+        memoria.escribirPrograma(2, "JMP 10", "Programa1");
+        memoria.escribirPrograma(3, "CMP A, B", "Programa2");
+        memoria.escribirPrograma(4, "RET", "Programa2");
+
+        TableDatos.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+                c.setBackground(Color.BLACK);
+                c.setForeground(Color.WHITE);
+                return c;
+            }
+        });
+
+    }
+
+    private void cargarInstrucciones() {
+        String texto = TextInstrucciones.getText();
+        if (texto.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No hay instrucciones para cargar",
+                    "Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Limpiar programas de usuario existentes
+        for (int i = 0; i < 16; i++) {
+            String[] programa = memoria.leerPrograma(i);
+            if ("Usuario".equals(programa[3])) {
+                memoria.escribirPrograma(i, "NOP", "Sistema");
+            }
+        }
+
+        // Dividir por líneas
+        String[] lineas = texto.split("\\r?\\n");
+        int direccion = 0;
+        boolean memoriaLlena = false;
+        boolean erroresEncontrados = false;
+        StringBuilder errores = new StringBuilder();
+
+        for (int i = 0; i < lineas.length; i++) {
+            String linea = lineas[i].trim();
+            if (linea.isEmpty()) {
+                continue;
+            }
+
+            if (direccion >= 16) {
+                memoriaLlena = true;
+                errores.append("Línea ").append(i + 1).append(": Memoria llena, no se pudo cargar: ").append(linea).append("\n");
+                continue;
+            }
+
+            // Verificar si es instrucción MOV
+            if (linea.toUpperCase().startsWith("MOV ")) {
+                if (validarInstruccionMOV(linea, i + 1, errores)) {
+                    procesarInstruccionMOV(linea, direccion);
+                    direccion++;
+                }
+                continue;
+            }
+
+            // Validar formato de instrucción general
+            if (!linea.matches(PATRON_INSTRUCCION)) {
+                erroresEncontrados = true;
+                errores.append("Línea ").append(i + 1).append(": Formato de instrucción inválido\n");
+                continue;
+            }
+
+            // Si pasa todas las validaciones, cargar en memoria
+            memoria.escribirPrograma(direccion, linea, "Usuario");
+            direccion++;
+        }
+
+        // Actualizar la tabla de programas
+        memoria.configurarTablaProgramas(TableProgramas);
+
+        // Mostrar resultados
+        if (erroresEncontrados) {
+            JOptionPane.showMessageDialog(this,
+                    "Se encontraron errores:\n\n" + errores.toString()
+                    + "\nSolo se cargaron las instrucciones válidas.",
+                    "Errores en instrucciones",
+                    JOptionPane.ERROR_MESSAGE);
+        } else if (memoriaLlena) {
+            JOptionPane.showMessageDialog(this,
+                    "Se cargaron solo las primeras 16 instrucciones\nLa memoria de programas está llena",
+                    "Advertencia",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private boolean validarInstruccionMOV(String linea, int numLinea, StringBuilder errores) {
+        // Verificar estructura básica
+        if (!linea.matches("^MOV\\s+.+")) {
+            errores.append("Línea ").append(numLinea).append(": Formato inválido para MOV\n");
+            return false;
+        }
+
+        // Extraer las partes
+        String[] partes = linea.split("\\s*,\\s*|\\s+");
+        if (partes.length != 3) {
+            errores.append("Línea ").append(numLinea).append(": MOV debe tener exactamente 2 operandos\n");
+            return false;
+        }
+
+        String destino = partes[1];
+        String origen = partes[2];
+        boolean errorEncontrado = false;
+
+        // Validar destino (debe ser registro o dirección)
+        if (!destino.matches(PATRON_REGISTRO) && !destino.matches(PATRON_DIRECCION)) {
+            errores.append("Línea ").append(numLinea).append(": Destino debe ser registro o dirección\n");
+            errorEncontrado = true;
+        }
+
+        // Validar origen (puede ser registro, dirección o número)
+        if (!origen.matches(PATRON_REGISTRO)
+                && !origen.matches(PATRON_DIRECCION)
+                && !origen.matches(PATRON_NUMERO_SIMPLE)) {
+            errores.append("Línea ").append(numLinea).append(": Origen inválido\n");
+            errorEncontrado = true;
+        }
+
+        // Validar rangos numéricos
+        if (destino.matches(PATRON_DIRECCION)) {
+            int num = Integer.parseInt(destino.substring(1, destino.length() - 1));
+            if (num < 0 || num > 15) {
+                errores.append("Línea ").append(numLinea).append(": Dirección destino fuera de rango (0-15)\n");
+                errorEncontrado = true;
+            }
+        }
+
+        if (origen.matches(PATRON_DIRECCION)) {
+            int num = Integer.parseInt(origen.substring(1, origen.length() - 1));
+            if (num < 0 || num > 15) {
+                errores.append("Línea ").append(numLinea).append(": Dirección origen fuera de rango (0-15)\n");
+                errorEncontrado = true;
+            }
+        } else if (origen.matches(PATRON_NUMERO_SIMPLE)) {
+            int num = Integer.parseInt(origen);
+            if (num < 0 || num > 511) {
+                errores.append("Línea ").append(numLinea).append(": Número origen fuera de rango (0-511)\n");
+                errorEncontrado = true;
+            }
+        }
+
+        return !errorEncontrado;
+    }
+
+    private void procesarInstruccionMOV(String instruccion, int dirMemoriaPrograma) {
+        // Guardar la instrucción en memoria de programas
+        memoria.escribirPrograma(dirMemoriaPrograma, instruccion, "Usuario");
+
+        // Procesar efectos en memoria de datos si el destino es una dirección
+        String[] partes = instruccion.split("\\s*,\\s*|\\s+");
+        String destino = partes[1];
+        String origen = partes[2];
+
+      
+
+        if (destino.startsWith("[") && destino.endsWith("]")) {
+            int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
+            int valor;
+
+            if (origen.startsWith("[") && origen.endsWith("]")) {
+                // MOV [x], [y] - Copiar de dirección a dirección
+                int dirOrigen = Integer.parseInt(origen.substring(1, origen.length() - 1));
+                valor = memoria.leerDato(dirOrigen);
+            } else if (origen.matches(PATRON_NUMERO_SIMPLE)) {
+                // MOV [x], numero
+                valor = Integer.parseInt(origen);
+            } else {
+                // MOV [x], registro - (valor por defecto 0, deberías implementar registros)
+                valor = 0;
+            }
+
+            // Asegurar que el valor esté en el rango permitido
+            valor = Math.max(0, Math.min(511, valor));
+            memoria.escribirDato(dirMemoriaDatos, valor);
+
+            // Resaltar la celda modificada
+            resaltarDireccionMemoria(dirMemoriaDatos);
+
+            // Actualizar la tabla de datos
+            memoria.configurarTablaDatos(TableDatos);
+        }
+    }
+
+    private void resaltarCeldaMemoria(int fila, int columna, Color colorFondo, Color colorTexto) {
+        TableDatos.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+
+                if (row == fila) {
+                    c.setBackground(colorFondo);
+                    c.setForeground(colorTexto);
+                } else {
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                }
+                return c;
+            }
+        });
+        TableDatos.repaint();
+    }
+
+    private void resaltarDireccionMemoria(int direccion) {
+        // Cambiar color temporalmente
+        resaltarCeldaMemoria(direccion, 2, Color.CYAN, Color.BLACK); // Columna 2 es "Valor"
+
+        // Crear un timer para restaurar el color después de 1 segundo
+        Timer timer = new Timer(1500, e -> {
+            resaltarCeldaMemoria(direccion, 2, Color.BLACK, Color.WHITE);
+            ((Timer) e.getSource()).stop();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
 
     public static void main(String[] args) {
         ProyectoComputador.main(args);
@@ -66,8 +340,9 @@ public class Computador extends javax.swing.JPanel {
     private void initComponents() {
 
         PanelMemoriaProgramas = new javax.swing.JPanel();
-        ListProgramas = new java.awt.List();
         LabelMemoriaProgramas = new javax.swing.JLabel();
+        jScrollPane5 = new javax.swing.JScrollPane();
+        TableProgramas = new javax.swing.JTable();
         PanelBusControl = new javax.swing.JPanel();
         LabelBusControl = new javax.swing.JLabel();
         FieldBusControl = new javax.swing.JTextField();
@@ -82,7 +357,6 @@ public class Computador extends javax.swing.JPanel {
         LabelIR = new javax.swing.JLabel();
         LabelMBR = new javax.swing.JLabel();
         LabelPC = new javax.swing.JLabel();
-        LabelALU1 = new javax.swing.JLabel();
         LabelUC = new javax.swing.JLabel();
         FieldUC = new javax.swing.JTextField();
         FieldIR = new javax.swing.JTextField();
@@ -91,7 +365,6 @@ public class Computador extends javax.swing.JPanel {
         FieldMAR = new javax.swing.JTextField();
         ImageALU1 = new javax.swing.JLabel();
         LabelRegistros = new javax.swing.JLabel();
-        LabelALU2 = new javax.swing.JLabel();
         ImageALU2 = new javax.swing.JLabel();
         FieldALU1 = new javax.swing.JTextField();
         FieldALU2 = new javax.swing.JTextField();
@@ -111,35 +384,48 @@ public class Computador extends javax.swing.JPanel {
         LabelProceso3 = new javax.swing.JTextField();
         LabelProceso1 = new javax.swing.JTextField();
         PanelMemoriaDatos = new javax.swing.JPanel();
-        ListDatos = new java.awt.List();
         LabelMemoriaDatos = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        TableDatos = new javax.swing.JTable();
+        ButtonEjecutar = new javax.swing.JButton();
+        ButtonInterrupcion = new javax.swing.JButton();
 
         setBackground(new java.awt.Color(0, 0, 0));
 
         PanelMemoriaProgramas.setBackground(new java.awt.Color(0, 0, 0));
         PanelMemoriaProgramas.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
-        ListProgramas.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                ListProgramasActionPerformed(evt);
-            }
-        });
-
         LabelMemoriaProgramas.setForeground(new java.awt.Color(255, 255, 255));
         LabelMemoriaProgramas.setText("Memoria Programas");
+
+        TableProgramas.setBackground(new java.awt.Color(0, 0, 0));
+        TableProgramas.setForeground(new java.awt.Color(255, 255, 255));
+        TableProgramas.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane5.setViewportView(TableProgramas);
 
         javax.swing.GroupLayout PanelMemoriaProgramasLayout = new javax.swing.GroupLayout(PanelMemoriaProgramas);
         PanelMemoriaProgramas.setLayout(PanelMemoriaProgramasLayout);
         PanelMemoriaProgramasLayout.setHorizontalGroup(
             PanelMemoriaProgramasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(PanelMemoriaProgramasLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(ListProgramas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
-            .addGroup(PanelMemoriaProgramasLayout.createSequentialGroup()
-                .addGap(47, 47, 47)
-                .addComponent(LabelMemoriaProgramas)
-                .addContainerGap(48, Short.MAX_VALUE))
+                .addGroup(PanelMemoriaProgramasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(PanelMemoriaProgramasLayout.createSequentialGroup()
+                        .addGap(47, 47, 47)
+                        .addComponent(LabelMemoriaProgramas))
+                    .addGroup(PanelMemoriaProgramasLayout.createSequentialGroup()
+                        .addGap(17, 17, 17)
+                        .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 331, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(16, Short.MAX_VALUE))
         );
         PanelMemoriaProgramasLayout.setVerticalGroup(
             PanelMemoriaProgramasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -147,8 +433,8 @@ public class Computador extends javax.swing.JPanel {
                 .addContainerGap()
                 .addComponent(LabelMemoriaProgramas, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(ListProgramas, javax.swing.GroupLayout.DEFAULT_SIZE, 258, Short.MAX_VALUE)
-                .addContainerGap())
+                .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 256, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         PanelBusControl.setBackground(new java.awt.Color(0, 0, 0));
@@ -271,9 +557,6 @@ public class Computador extends javax.swing.JPanel {
         LabelPC.setForeground(new java.awt.Color(255, 255, 255));
         LabelPC.setText("PC");
 
-        LabelALU1.setForeground(new java.awt.Color(255, 255, 255));
-        LabelALU1.setText("ALU1");
-
         LabelUC.setForeground(new java.awt.Color(255, 255, 255));
         LabelUC.setText("UC");
 
@@ -302,9 +585,6 @@ public class Computador extends javax.swing.JPanel {
 
         LabelRegistros.setForeground(new java.awt.Color(255, 255, 255));
         LabelRegistros.setText("Registros");
-
-        LabelALU2.setForeground(new java.awt.Color(255, 255, 255));
-        LabelALU2.setText("ALU2");
 
         ImageALU2.setForeground(new java.awt.Color(255, 255, 255));
         ImageALU2.setText(".");
@@ -346,125 +626,117 @@ public class Computador extends javax.swing.JPanel {
             .addGroup(PanelCPULayout.createSequentialGroup()
                 .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(PanelCPULayout.createSequentialGroup()
-                        .addGap(144, 144, 144)
-                        .addComponent(LabelRegistros)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)))
-                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(PanelCPULayout.createSequentialGroup()
-                                .addComponent(FieldMBR, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
-                                .addContainerGap())
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                                .addComponent(LabelMBR)
-                                .addGap(78, 78, 78))
-                            .addGroup(PanelCPULayout.createSequentialGroup()
-                                .addComponent(FieldMAR)
-                                .addContainerGap()))
-                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                            .addComponent(LabelMAR)
-                            .addGap(78, 78, 78))
-                        .addGroup(PanelCPULayout.createSequentialGroup()
-                            .addComponent(FieldPC, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addContainerGap()))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                        .addComponent(LabelPC)
-                        .addGap(83, 83, 83))))
-            .addGroup(PanelCPULayout.createSequentialGroup()
-                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(PanelCPULayout.createSequentialGroup()
                         .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(PanelCPULayout.createSequentialGroup()
                                 .addGap(17, 17, 17)
                                 .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(FieldALU2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 307, Short.MAX_VALUE)
+                                    .addComponent(FieldALU2, javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(FieldALU1, javax.swing.GroupLayout.Alignment.LEADING)))
-                            .addGroup(PanelCPULayout.createSequentialGroup()
-                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(LabelALU1))
                             .addGroup(PanelCPULayout.createSequentialGroup()
                                 .addGap(42, 42, 42)
                                 .addComponent(ImageALU2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(LabelALU2)))
+                                .addGap(0, 0, Short.MAX_VALUE)))
                         .addGap(124, 124, 124))
                     .addGroup(PanelCPULayout.createSequentialGroup()
-                        .addGap(39, 39, 39)
-                        .addComponent(ImageALU1)
+                        .addContainerGap()
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addGap(31, 31, 31)
+                                .addComponent(ImageALU1))
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addGap(65, 65, 65)
+                                .addComponent(LabelRegistros)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                     .addGroup(PanelCPULayout.createSequentialGroup()
-                        .addGap(80, 80, 80)
-                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(LabelIR)
-                            .addComponent(LabelUC))
+                        .addComponent(LabelIR)
                         .addGap(83, 83, 83))
                     .addGroup(PanelCPULayout.createSequentialGroup()
-                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(FieldUC)
-                            .addComponent(FieldIR)
-                            .addComponent(FieldPSW, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(FieldIR)
                         .addContainerGap())
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, PanelCPULayout.createSequentialGroup()
-                        .addGap(75, 75, 75)
-                        .addComponent(LabelPSW)
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(FieldMBR)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
+                                        .addComponent(LabelMBR)
+                                        .addGap(72, 72, 72))
+                                    .addComponent(FieldMAR, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
+                                    .addComponent(LabelMAR)
+                                    .addGap(72, 72, 72))
+                                .addComponent(FieldPC, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
+                                .addComponent(LabelPC)
+                                .addGap(77, 77, 77)))
+                        .addContainerGap())
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addGap(80, 80, 80)
+                                .addComponent(LabelUC)
+                                .addGap(77, 77, 77))
+                            .addComponent(FieldUC))
+                        .addContainerGap())
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(FieldPSW, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, PanelCPULayout.createSequentialGroup()
+                                .addGap(75, 75, 75)
+                                .addComponent(LabelPSW)))
                         .addContainerGap())))
         );
         PanelCPULayout.setVerticalGroup(
             PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                .addGap(11, 11, 11)
-                .addComponent(LabelIR)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(FieldIR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(ImageALU1))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(LabelALU1)
-                .addGap(5, 5, 5)
                 .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addGap(11, 11, 11)
+                        .addComponent(LabelIR)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(FieldIR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addGap(20, 20, 20)
+                        .addComponent(ImageALU1)))
+                .addGap(14, 14, 14)
+                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(PanelCPULayout.createSequentialGroup()
                         .addComponent(FieldALU1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(37, 37, 37)
-                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(LabelALU2)
-                            .addComponent(ImageALU2))
+                        .addComponent(ImageALU2)
                         .addGap(18, 18, 18)
-                        .addComponent(FieldALU2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(FieldALU2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(27, 27, 27)
+                        .addComponent(LabelRegistros)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 97, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(PanelCPULayout.createSequentialGroup()
                         .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(PanelCPULayout.createSequentialGroup()
                                 .addGap(22, 22, 22)
                                 .addComponent(FieldUC, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(LabelUC))
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(LabelPSW)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(FieldPSW, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 36, Short.MAX_VALUE)
-                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addComponent(FieldPSW, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(LabelPC)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(FieldPC, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(21, 21, 21)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(LabelMAR)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(FieldMAR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(LabelMBR)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(FieldMBR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(28, 28, 28))
-                    .addGroup(PanelCPULayout.createSequentialGroup()
-                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 167, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(LabelRegistros)
-                        .addGap(14, 14, 14))))
+                        .addComponent(FieldMBR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(14, Short.MAX_VALUE))
         );
 
         PanelIO.setBackground(new java.awt.Color(0, 0, 0));
@@ -489,7 +761,7 @@ public class Computador extends javax.swing.JPanel {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelIOLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(PanelIOLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(FieldIO)
+                    .addComponent(FieldIO, javax.swing.GroupLayout.DEFAULT_SIZE, 113, Short.MAX_VALUE)
                     .addGroup(PanelIOLayout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(LabelIO)))
@@ -507,13 +779,14 @@ public class Computador extends javax.swing.JPanel {
 
         TextInstrucciones.setBackground(new java.awt.Color(102, 102, 102));
         TextInstrucciones.setColumns(20);
+        TextInstrucciones.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
         TextInstrucciones.setForeground(new java.awt.Color(255, 255, 255));
         TextInstrucciones.setRows(5);
-        TextInstrucciones.setText("SADSDLJ");
+        TextInstrucciones.setText("MOV [0], 211");
         jScrollPane2.setViewportView(TextInstrucciones);
 
         LabelInstrucciones.setForeground(new java.awt.Color(255, 255, 255));
-        LabelInstrucciones.setText("Comando de instrucciones");
+        LabelInstrucciones.setText("Comando");
 
         PanelProcesos.setBackground(new java.awt.Color(0, 0, 0));
         PanelProcesos.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
@@ -566,37 +839,60 @@ public class Computador extends javax.swing.JPanel {
         PanelMemoriaDatos.setBackground(new java.awt.Color(0, 0, 0));
         PanelMemoriaDatos.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
-        ListDatos.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                ListDatosActionPerformed(evt);
-            }
-        });
-
         LabelMemoriaDatos.setForeground(new java.awt.Color(255, 255, 255));
         LabelMemoriaDatos.setText("Memoria Datos");
+
+        TableDatos.setBackground(new java.awt.Color(0, 0, 0));
+        TableDatos.setForeground(new java.awt.Color(255, 255, 255));
+        TableDatos.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane1.setViewportView(TableDatos);
 
         javax.swing.GroupLayout PanelMemoriaDatosLayout = new javax.swing.GroupLayout(PanelMemoriaDatos);
         PanelMemoriaDatos.setLayout(PanelMemoriaDatosLayout);
         PanelMemoriaDatosLayout.setHorizontalGroup(
             PanelMemoriaDatosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(PanelMemoriaDatosLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(ListDatos, javax.swing.GroupLayout.DEFAULT_SIZE, 182, Short.MAX_VALUE)
-                .addContainerGap())
-            .addGroup(PanelMemoriaDatosLayout.createSequentialGroup()
-                .addGap(61, 61, 61)
-                .addComponent(LabelMemoriaDatos)
+                .addGroup(PanelMemoriaDatosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(PanelMemoriaDatosLayout.createSequentialGroup()
+                        .addGap(67, 67, 67)
+                        .addComponent(LabelMemoriaDatos))
+                    .addGroup(PanelMemoriaDatosLayout.createSequentialGroup()
+                        .addGap(16, 16, 16)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 331, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         PanelMemoriaDatosLayout.setVerticalGroup(
             PanelMemoriaDatosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelMemoriaDatosLayout.createSequentialGroup()
+            .addGroup(PanelMemoriaDatosLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(LabelMemoriaDatos, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(ListDatos, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(283, 283, 283))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 283, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
+
+        ButtonEjecutar.setBackground(new java.awt.Color(0, 0, 0));
+        ButtonEjecutar.setForeground(new java.awt.Color(255, 255, 255));
+        ButtonEjecutar.setText("Ejecutar");
+
+        ButtonInterrupcion.setBackground(new java.awt.Color(0, 0, 0));
+        ButtonInterrupcion.setForeground(new java.awt.Color(255, 255, 255));
+        ButtonInterrupcion.setText("Interrupción");
+        ButtonInterrupcion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ButtonInterrupcionActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -616,21 +912,24 @@ public class Computador extends javax.swing.JPanel {
                         .addComponent(PanelIO, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGap(18, 18, 18)
                         .addComponent(PanelProcesos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(PanelMemoriaProgramas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 215, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(324, 324, 324)
-                        .addComponent(LabelInstrucciones)))
-                .addGap(21, 21, 21))
-            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                    .addContainerGap(954, Short.MAX_VALUE)
-                    .addComponent(PanelMemoriaDatos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(254, 254, 254)))
+                        .addComponent(PanelMemoriaProgramas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 119, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(LabelInstrucciones, javax.swing.GroupLayout.PREFERRED_SIZE, 109, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(36, 36, 36)
+                                .addComponent(ButtonEjecutar))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(26, 26, 26)
+                                .addComponent(ButtonInterrupcion))))
+                    .addComponent(PanelMemoriaDatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(323, 323, 323))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -646,43 +945,40 @@ public class Computador extends javax.swing.JPanel {
                                 .addGap(18, 18, 18)
                                 .addComponent(PanelBusDirecciones, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(PanelCPU, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(28, 28, 28)
+                        .addGap(24, 24, 24)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(PanelIO, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(PanelProcesos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(PanelProcesos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(LabelInstrucciones, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addGroup(layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 531, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addGap(6, 6, 6)
+                                .addComponent(LabelInstrucciones, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 191, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(ButtonEjecutar)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(PanelMemoriaProgramas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(35, 35, 35))))))
-            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(layout.createSequentialGroup()
-                    .addGap(16, 16, 16)
-                    .addComponent(PanelMemoriaDatos, javax.swing.GroupLayout.PREFERRED_SIZE, 268, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(364, Short.MAX_VALUE)))
+                                .addComponent(ButtonInterrupcion))
+                            .addComponent(PanelMemoriaProgramas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
+                        .addComponent(PanelMemoriaDatos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(29, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
-
-    private void ListProgramasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ListProgramasActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_ListProgramasActionPerformed
 
     private void FieldIOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_FieldIOActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_FieldIOActionPerformed
 
-    private void ListDatosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ListDatosActionPerformed
+    private void ButtonInterrupcionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ButtonInterrupcionActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_ListDatosActionPerformed
+    }//GEN-LAST:event_ButtonInterrupcionActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton ButtonEjecutar;
+    private javax.swing.JButton ButtonInterrupcion;
     private javax.swing.JTextField FieldALU1;
     private javax.swing.JTextField FieldALU2;
     private javax.swing.JTextField FieldBusControl;
@@ -697,8 +993,6 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JTextField FieldUC;
     private javax.swing.JLabel ImageALU1;
     private javax.swing.JLabel ImageALU2;
-    private javax.swing.JLabel LabelALU1;
-    private javax.swing.JLabel LabelALU2;
     private javax.swing.JLabel LabelBusControl;
     private javax.swing.JLabel LabelBusDatos;
     private javax.swing.JLabel LabelBusDirecciones;
@@ -717,8 +1011,6 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JTextField LabelProceso3;
     private javax.swing.JLabel LabelRegistros;
     private javax.swing.JLabel LabelUC;
-    private java.awt.List ListDatos;
-    private java.awt.List ListProgramas;
     private javax.swing.JPanel PanelBusControl;
     private javax.swing.JPanel PanelBusDatos;
     private javax.swing.JPanel PanelBusDirecciones;
@@ -727,9 +1019,13 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JPanel PanelMemoriaDatos;
     private javax.swing.JPanel PanelMemoriaProgramas;
     private javax.swing.JPanel PanelProcesos;
+    private javax.swing.JTable TableDatos;
+    private javax.swing.JTable TableProgramas;
     private javax.swing.JTable TableRegistros;
     private javax.swing.JTextArea TextInstrucciones;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane5;
     // End of variables declaration//GEN-END:variables
 }
