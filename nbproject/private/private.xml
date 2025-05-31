@@ -3,22 +3,13 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Registros/IR.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/CPU/PC.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Computador.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Registros/MAR.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/ProyectoComputador.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/CPU/ALU.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Memoria/Memoria.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/IO/VirtualMemoria.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/CPU/PSW.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Buses/BusDirecciones.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/IO/IO.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Registros/MBR.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Buses/BusControl.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/CPU/UC.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Registros/BancoRegistros.java</file>
-            <file>file:/C:/Users/57313/Documents/TrabajosUniversidad/Semestre%206/ARQUITECTURA%20DE%20COMPUTADORES/ProyectoComputador/src/proyectocomputador/Componentes/Buses/BusDatos.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/Memoria.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/ProyectoComputador.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/Computador.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/IO/IO.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/Instruccion.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/CPU.java</file>
+            <file>file:/C:/Users/Sofi/ComputadoraSimulaci-n/src/proyectocomputador/Buses.java</file>
         </group>
     </open-files>
 </project-private>
