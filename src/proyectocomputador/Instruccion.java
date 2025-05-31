@@ -10,6 +10,15 @@ package proyectocomputador;
  */
 public class Instruccion {
 
+    public static final String[] CODIGOS_OPERACION = {"ADD", "SUB", "MPY", "DIV", "CMP", "MOV", "JMP", "JZ", "JNZ", "LOAD", "RET"};
+    public static final String PATRON_REGISTRO = "(AX|BX|CX|DX|AL|BL|CL|DL|AH|BH|CH|DH)";
+    public static final String PATRON_DIRECCION = "\\[(1[0-5]|[0-9])\\]";
+    public static final String PATRON_NUMERO_SIMPLE = "(5[0-1][0-9]|[1-4][0-9][0-9]|[1-9][0-9]|[0-9])";
+    public static final String PATRON_OPERANDO = "(" + PATRON_REGISTRO + "|" + PATRON_DIRECCION + "|" + PATRON_NUMERO_SIMPLE + ")";
+    public static final String PATRON_INSTRUCCION = "^(" + String.join("|", CODIGOS_OPERACION) + ")\\s+"
+            + PATRON_OPERANDO + "\\s*,\\s*" + PATRON_OPERANDO
+            + "(\\s*,\\s*" + PATRON_OPERANDO + ")?$";
+
     // Atributos (basados en tu diseño de 32 bits)
     private int codop;          // 5 bits: código de operación
     private int dondeSeGuarda;  // 9 bits: registro/memoria destino
@@ -24,6 +33,10 @@ public class Instruccion {
         this.operando1 = operando1 & 0x1FF;
         this.operando2 = operando2 & 0x1FF;
         this.tipo = determinarTipo(codop);  // Clasifica la instrucción
+    }
+    
+    public Instruccion(){
+    
     }
 
     // Método para clasificar el tipo de instrucción (ejemplo básico)
@@ -74,5 +87,63 @@ public class Instruccion {
                 Integer.toBinaryString(operando2),
                 tipo
         );
+    }
+
+    public boolean validarInstruccionMOV(String linea, int numLinea, StringBuilder errores) {
+        // Verificar estructura básica
+        if (!linea.matches("^MOV\\s+.+")) {
+            errores.append("Línea ").append(numLinea).append(": Formato inválido para MOV\n");
+            return false;
+        }
+
+        // Extraer las partes
+        String[] partes = linea.split("\\s*,\\s*|\\s+");
+        if (partes.length != 3) {
+            errores.append("Línea ").append(numLinea).append(": MOV debe tener exactamente 2 operandos\n");
+            return false;
+        }
+
+        String destino = partes[1];
+        String origen = partes[2];
+        boolean errorEncontrado = false;
+
+        // Validar destino (debe ser registro o dirección)
+        if (!destino.matches(PATRON_REGISTRO) && !destino.matches(PATRON_DIRECCION)) {
+            errores.append("Línea ").append(numLinea).append(": Destino debe ser registro o dirección\n");
+            errorEncontrado = true;
+        }
+
+        // Validar origen (puede ser registro, dirección o número)
+        if (!origen.matches(PATRON_REGISTRO)
+                && !origen.matches(PATRON_DIRECCION)
+                && !origen.matches(PATRON_NUMERO_SIMPLE)) {
+            errores.append("Línea ").append(numLinea).append(": Origen inválido\n");
+            errorEncontrado = true;
+        }
+
+        // Validar rangos numéricos
+        if (destino.matches(PATRON_DIRECCION)) {
+            int num = Integer.parseInt(destino.substring(1, destino.length() - 1));
+            if (num < 0 || num > 15) {
+                errores.append("Línea ").append(numLinea).append(": Dirección destino fuera de rango (0-15)\n");
+                errorEncontrado = true;
+            }
+        }
+
+        if (origen.matches(PATRON_DIRECCION)) {
+            int num = Integer.parseInt(origen.substring(1, origen.length() - 1));
+            if (num < 0 || num > 15) {
+                errores.append("Línea ").append(numLinea).append(": Dirección origen fuera de rango (0-15)\n");
+                errorEncontrado = true;
+            }
+        } else if (origen.matches(PATRON_NUMERO_SIMPLE)) {
+            int num = Integer.parseInt(origen);
+            if (num < 0 || num > 511) {
+                errores.append("Línea ").append(numLinea).append(": Número origen fuera de rango (0-511)\n");
+                errorEncontrado = true;
+            }
+        }
+
+        return !errorEncontrado;
     }
 }

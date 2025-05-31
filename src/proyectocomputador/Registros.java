@@ -14,28 +14,22 @@ public class Registros {
     private MAR mar;
 
     public Registros() {
-        bancoRegistros = new BancoRegistros(); // 16 registros
+        bancoRegistros = new BancoRegistros();
         ir = new IR();
         mbr = new MBR();
         mar = new MAR();
     }
 
-    // Método para obtener la tabla de registros
-    public JTable getTablaRegistros() {
-        return bancoRegistros.getTablaRegistros();
+    public void configurarTablaRegistros(JTable tabla) {
+        bancoRegistros.configurarTabla(tabla);
     }
 
-    // Métodos para acceder a los registros individuales
     public void setValorRegistro(String nombre, int valor) {
         bancoRegistros.setValorRegistro(nombre, valor);
     }
 
     public int getValorRegistro(String nombre) {
         return bancoRegistros.getValorRegistro(nombre);
-    }
-
-    public BancoRegistros getBancoRegistros() {
-        return bancoRegistros;
     }
 
     // Getters para los otros registros
@@ -49,5 +43,9 @@ public class Registros {
 
     public MAR getMAR() {
         return mar;
+    }
+
+    public BancoRegistros getBancoRegistros() {
+        return bancoRegistros;
     }
 }

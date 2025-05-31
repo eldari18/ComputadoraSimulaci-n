@@ -5,11 +5,10 @@ import javax.swing.table.DefaultTableModel;
 
 public class BancoRegistros {
 
-    private JTable tablaRegistros;
-    private DefaultTableModel modelo;
-    private int[] valoresRegistros;
+    private String[][] registros; // Matriz para almacenar Nombre, Valor, ValorB
+    private DefaultTableModel tableModel;
 
-    // Nombres de los registros (12 registros: AH, AL, AX, BH, BL, BX, CH, CL, CX, DH, DL, DX)
+    // Nombres de los registros (12 registros)
     private final String[] NOMBRES_REGISTROS = {
         "AH", "AL", "AX",
         "BH", "BL", "BX",
@@ -18,66 +17,71 @@ public class BancoRegistros {
     };
 
     public BancoRegistros() {
-        valoresRegistros = new int[NOMBRES_REGISTROS.length];
-        inicializarTabla();
+        registros = new String[NOMBRES_REGISTROS.length][3];
         inicializarRegistros();
-    }
-
-    private void inicializarTabla() {
-        modelo = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // Hacer todas las celdas no editables
-            }
-        };
-
-        // Configurar columnas
-        modelo.addColumn("Registro");
-        modelo.addColumn("Valor");
-
-        // Añadir filas para cada registro
-        for (String reg : NOMBRES_REGISTROS) {
-            modelo.addRow(new Object[]{reg, 0});
-        }
-
-        // Crear la tabla con el modelo
-        tablaRegistros = new JTable(modelo);
+        inicializarTabla();
     }
 
     private void inicializarRegistros() {
-        // Inicializar todos los registros a 0
-        for (int i = 0; i < valoresRegistros.length; i++) {
-            valoresRegistros[i] = 0;
+        for (int i = 0; i < NOMBRES_REGISTROS.length; i++) {
+            registros[i][0] = NOMBRES_REGISTROS[i]; // Nombre del registro
+            registros[i][1] = "0";                  // Valor en decimal
+            registros[i][2] = "00000000";           // Valor en binario (8 bits)
         }
     }
 
-    public JTable getTablaRegistros() {
-        return tablaRegistros;
+    private void inicializarTabla() {
+        tableModel = new DefaultTableModel(
+                new Object[]{"Registro", "Valor", "ValorB"},
+                NOMBRES_REGISTROS.length
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Hacer la tabla no editable
+            }
+        };
+
+        actualizarModeloTabla();
+    }
+
+    private void actualizarModeloTabla() {
+        for (int i = 0; i < registros.length; i++) {
+            tableModel.setValueAt(registros[i][0], i, 0); // Nombre
+            tableModel.setValueAt(registros[i][1], i, 1); // Valor
+            tableModel.setValueAt(registros[i][2], i, 2); // ValorB
+        }
     }
 
     public void setValorRegistro(String nombreRegistro, int valor) {
-        // Buscar el registro por nombre y actualizar su valor
         for (int i = 0; i < NOMBRES_REGISTROS.length; i++) {
             if (NOMBRES_REGISTROS[i].equalsIgnoreCase(nombreRegistro)) {
-                valoresRegistros[i] = valor;
-                actualizarTabla(i, valor);
+                registros[i][1] = String.valueOf(valor); // Valor decimal
+                registros[i][2] = String.format("%8s", Integer.toBinaryString(valor & 0xFF))
+                        .replace(' ', '0');    // Valor binario
+                actualizarModeloTabla();
                 break;
             }
         }
     }
 
-    private void actualizarTabla(int indiceRegistro, int valor) {
-        // Actualizar la fila correspondiente en la tabla
-        modelo.setValueAt(valor, indiceRegistro, 1);  // Columna Valor
-    }
-
     public int getValorRegistro(String nombreRegistro) {
-        // Obtener el valor de un registro por nombre
         for (int i = 0; i < NOMBRES_REGISTROS.length; i++) {
             if (NOMBRES_REGISTROS[i].equalsIgnoreCase(nombreRegistro)) {
-                return valoresRegistros[i];
+                return Integer.parseInt(registros[i][1]);
             }
         }
-        return 0; // Si no se encuentra, devolver 0
+        return 0;
+    }
+
+    public DefaultTableModel getTableModel() {
+        return tableModel;
+    }
+
+    public void configurarTabla(JTable tabla) {
+        tabla.setModel(tableModel);
+        // Configurar anchos de columnas
+        tabla.getColumnModel().getColumn(0).setPreferredWidth(50);  // Nombre
+        tabla.getColumnModel().getColumn(1).setPreferredWidth(60);  // Valor
+        tabla.getColumnModel().getColumn(2).setPreferredWidth(100); // ValorB
     }
 }

@@ -13,6 +13,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Image;
 import java.io.File;
+import java.util.Arrays;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -31,15 +32,9 @@ public class Computador extends javax.swing.JPanel {
     private Memoria memoria;
     private Registros registro;
     private Utils utils;
+    private Instruccion instruccion;
 
-    private static final String[] CODIGOS_OPERACION = {"ADD", "SUB", "MPY", "DIV", "CMP", "MOV", "JMP", "JZ", "JNZ", "LOAD", "RET"};
-    private static final String PATRON_REGISTRO = "(AX|BX|CX|DX|SI|DI|SP|BP)";
-    private static final String PATRON_DIRECCION = "\\[(1[0-5]|[0-9])\\]";
-    private static final String PATRON_NUMERO_SIMPLE = "(5[0-1][0-9]|[1-4][0-9][0-9]|[1-9][0-9]|[0-9])";
-    private static final String PATRON_OPERANDO = "(" + PATRON_REGISTRO + "|" + PATRON_DIRECCION + "|" + PATRON_NUMERO_SIMPLE + ")";
-    private static final String PATRON_INSTRUCCION = "^(" + String.join("|", CODIGOS_OPERACION) + ")\\s+"
-            + PATRON_OPERANDO + "\\s*,\\s*" + PATRON_OPERANDO
-            + "(\\s*,\\s*" + PATRON_OPERANDO + ")?$";
+    
 
     /**
      * Creates new form NewJPanel
@@ -73,13 +68,20 @@ public class Computador extends javax.swing.JPanel {
     private void inicializarComponentes() {
         // Inicializar componentes
         memoria = new Memoria();
+        instruccion = new Instruccion();
 
-        ButtonEjecutar.addActionListener(e -> cargarInstrucciones());
+        ButtonEjecutar.addActionListener(e -> guardarInstrucciones());
 
         // Configurar tabla de datos
         memoria.configurarTablaDatos(TableDatos);
         memoria.configurarTablaProgramas(TableProgramas);
 
+        registro = new Registros(); // Asegúrate de que esta variable de instancia existe
+
+        // Configurar tabla de registros
+        registro.configurarTablaRegistros(TableRegistros);
+
+//        registro.setValorRegistro("CL", 42);
         // Escribir algunos valores de ejemplo
         memoria.escribirDato(0, 10);
         memoria.escribirDato(1, 255);
@@ -98,12 +100,7 @@ public class Computador extends javax.swing.JPanel {
         memoria.escribirDato(14, 255);
         memoria.escribirDato(15, 7);
 
-        memoria.escribirPrograma(0, "MOV A, 5", "Programa1");
-        memoria.escribirPrograma(1, "ADD A, B", "Programa1");
-        memoria.escribirPrograma(2, "JMP 10", "Programa1");
-        memoria.escribirPrograma(3, "CMP A, B", "Programa2");
-        memoria.escribirPrograma(4, "RET", "Programa2");
-
+//        memoria.escribirPrograma(0, "MOV A, 5", "Programa1");
         TableDatos.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -116,9 +113,21 @@ public class Computador extends javax.swing.JPanel {
             }
         });
 
+        // Configurar renderizado de la tabla de registros (similar a la tabla de datos)
+        TableRegistros.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+                c.setBackground(Color.BLACK);
+                c.setForeground(Color.WHITE);
+                return c;
+            }
+        });
     }
 
-    private void cargarInstrucciones() {
+    private void guardarInstrucciones() {
         String texto = TextInstrucciones.getText();
         if (texto.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -136,142 +145,200 @@ public class Computador extends javax.swing.JPanel {
             }
         }
 
-        // Dividir por líneas
-        String[] lineas = texto.split("\\r?\\n");
-        int direccion = 0;
-        boolean memoriaLlena = false;
-        boolean erroresEncontrados = false;
-        StringBuilder errores = new StringBuilder();
+        // Dividir por líneas y filtrar líneas vacías
+        String[] lineas = Arrays.stream(texto.split("\\r?\\n"))
+                .filter(linea -> !linea.trim().isEmpty())
+                .toArray(String[]::new);
 
-        for (int i = 0; i < lineas.length; i++) {
-            String linea = lineas[i].trim();
-            if (linea.isEmpty()) {
-                continue;
-            }
+        // Crear timer para procesamiento secuencial
+        Timer timer = new Timer(1000, null);
+        final int[] index = {0};
+        final int[] direccion = {0};
+        final StringBuilder errores = new StringBuilder();
+        final boolean[] erroresEncontrados = {false};
+        final boolean[] memoriaLlena = {false};
 
-            if (direccion >= 16) {
-                memoriaLlena = true;
-                errores.append("Línea ").append(i + 1).append(": Memoria llena, no se pudo cargar: ").append(linea).append("\n");
-                continue;
-            }
+        timer.addActionListener(e -> {
+            if (index[0] >= lineas.length || direccion[0] >= 16) {
+                ((Timer) e.getSource()).stop();
 
-            // Verificar si es instrucción MOV
-            if (linea.toUpperCase().startsWith("MOV ")) {
-                if (validarInstruccionMOV(linea, i + 1, errores)) {
-                    procesarInstruccionMOV(linea, direccion);
-                    direccion++;
+                // Mostrar resultados finales
+                if (erroresEncontrados[0]) {
+                    JOptionPane.showMessageDialog(this,
+                            "Se encontraron errores:\n\n" + errores.toString()
+                            + "\nSolo se cargaron las instrucciones válidas.",
+                            "Errores en instrucciones",
+                            JOptionPane.ERROR_MESSAGE);
+                } else if (memoriaLlena[0]) {
+                    JOptionPane.showMessageDialog(this,
+                            "Se cargaron solo las primeras 16 instrucciones\nLa memoria de programas está llena",
+                            "Advertencia",
+                            JOptionPane.WARNING_MESSAGE);
                 }
-                continue;
+                return;
             }
 
-            // Validar formato de instrucción general
-            if (!linea.matches(PATRON_INSTRUCCION)) {
-                erroresEncontrados = true;
-                errores.append("Línea ").append(i + 1).append(": Formato de instrucción inválido\n");
-                continue;
+            String linea = lineas[index[0]].trim();
+            System.out.println("Procesando instrucción " + (index[0] + 1) + ": " + linea);
+
+            // Procesar instrucción
+            if (linea.toUpperCase().startsWith("MOV ")) {
+                if (instruccion.validarInstruccionMOV(linea, index[0] + 1, errores)) {
+                    memoria.escribirPrograma(index[0], linea, "Usuario");
+                    resaltarCeldaPrograma(index[0]);
+                    direccion[0]++;
+                } else {
+                    erroresEncontrados[0] = true;
+                }
+            } else if (linea.matches(instruccion.PATRON_INSTRUCCION)) {
+                memoria.escribirPrograma(direccion[0], linea, "Usuario");
+                resaltarCeldaPrograma(direccion[0]);
+                direccion[0]++;
+            } else {
+                errores.append("Línea ").append(index[0] + 1).append(": Formato de instrucción inválido\n");
+                erroresEncontrados[0] = true;
             }
 
-            // Si pasa todas las validaciones, cargar en memoria
-            memoria.escribirPrograma(direccion, linea, "Usuario");
-            direccion++;
-        }
+            index[0]++;
 
-        // Actualizar la tabla de programas
-        memoria.configurarTablaProgramas(TableProgramas);
+            // Actualizar tablas
+            memoria.configurarTablaProgramas(TableProgramas);
+        });
 
-        // Mostrar resultados
-        if (erroresEncontrados) {
-            JOptionPane.showMessageDialog(this,
-                    "Se encontraron errores:\n\n" + errores.toString()
-                    + "\nSolo se cargaron las instrucciones válidas.",
-                    "Errores en instrucciones",
-                    JOptionPane.ERROR_MESSAGE);
-        } else if (memoriaLlena) {
-            JOptionPane.showMessageDialog(this,
-                    "Se cargaron solo las primeras 16 instrucciones\nLa memoria de programas está llena",
-                    "Advertencia",
-                    JOptionPane.WARNING_MESSAGE);
+        timer.setInitialDelay(0);
+        timer.start();
+    }
+
+    private void cargarInstrucciones() {
+        // Crear timer para mostrar instrucciones secuencialmente
+        Timer timer = new Timer(1000, null);
+        final int[] index = {0};
+        final int[] instruccionesMostradas = {0};
+
+        timer.addActionListener(e -> {
+            // Leer la instrucción en la posición actual
+            String[] programa = memoria.leerPrograma(index[0]);
+            String instruccion = programa[0];
+            String tipo = programa[3];
+
+            // Solo mostrar instrucciones de usuario (ignorar "NOP" del sistema)
+            if ("Usuario".equals(tipo) && !"NOP".equals(instruccion)) {
+                System.out.println("Instrucción " + (instruccionesMostradas[0] + 1)
+                        + " (Dirección " + index[0] + "): " + instruccion);
+                instruccionesMostradas[0]++;
+
+                // Resaltar la celda en la tabla de programas
+                resaltarCeldaPrograma(index[0]);
+            }
+
+            index[0]++;
+
+            // Detener el timer cuando se hayan revisado todas las posiciones
+            if (index[0] >= 16) {
+                ((Timer) e.getSource()).stop();
+                System.out.println("Fin de las instrucciones almacenadas");
+            }
+        });
+
+        System.out.println("Cargando instrucciones desde memoria...");
+        timer.setInitialDelay(0);
+        timer.start();
+    }
+
+    private void resaltarProcesoCompleto(String instru, int dirPrograma) {
+        // Resaltar en tabla de programas
+        resaltarCeldaPrograma(dirPrograma);
+
+        // Procesar efectos de la instrucción MOV
+        if (instru.toUpperCase().startsWith("MOV ")) {
+            String[] partes = instru.split("\\s*,\\s*|\\s+");
+            String destino = partes[1];
+            String origen = partes[2];
+
+            // Resaltar registro destino si es un registro
+            if (destino.matches(instruccion.PATRON_REGISTRO)) {
+                resaltarRegistro(obtenerIndice(destino));
+            } // Resaltar dirección memoria si es una dirección
+            else if (destino.matches(instruccion.PATRON_DIRECCION)) {
+                int dirMemoria = Integer.parseInt(destino.substring(1, destino.length() - 1));
+                resaltarDireccionMemoria(dirMemoria);
+            }
+
+            // Resaltar origen si es dirección de memoria
+            if (origen.matches(instruccion.PATRON_DIRECCION)) {
+                int dirMemoria = Integer.parseInt(origen.substring(1, origen.length() - 1));
+                resaltarDireccionMemoria(dirMemoria);
+            }
         }
     }
 
-    private boolean validarInstruccionMOV(String linea, int numLinea, StringBuilder errores) {
-        // Verificar estructura básica
-        if (!linea.matches("^MOV\\s+.+")) {
-            errores.append("Línea ").append(numLinea).append(": Formato inválido para MOV\n");
-            return false;
-        }
+    private void resaltarCeldaPrograma(int fila) {
+        // Cambiar color temporalmente
+        TableProgramas.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
 
-        // Extraer las partes
-        String[] partes = linea.split("\\s*,\\s*|\\s+");
-        if (partes.length != 3) {
-            errores.append("Línea ").append(numLinea).append(": MOV debe tener exactamente 2 operandos\n");
-            return false;
-        }
-
-        String destino = partes[1];
-        String origen = partes[2];
-        boolean errorEncontrado = false;
-
-        // Validar destino (debe ser registro o dirección)
-        if (!destino.matches(PATRON_REGISTRO) && !destino.matches(PATRON_DIRECCION)) {
-            errores.append("Línea ").append(numLinea).append(": Destino debe ser registro o dirección\n");
-            errorEncontrado = true;
-        }
-
-        // Validar origen (puede ser registro, dirección o número)
-        if (!origen.matches(PATRON_REGISTRO)
-                && !origen.matches(PATRON_DIRECCION)
-                && !origen.matches(PATRON_NUMERO_SIMPLE)) {
-            errores.append("Línea ").append(numLinea).append(": Origen inválido\n");
-            errorEncontrado = true;
-        }
-
-        // Validar rangos numéricos
-        if (destino.matches(PATRON_DIRECCION)) {
-            int num = Integer.parseInt(destino.substring(1, destino.length() - 1));
-            if (num < 0 || num > 15) {
-                errores.append("Línea ").append(numLinea).append(": Dirección destino fuera de rango (0-15)\n");
-                errorEncontrado = true;
+                if (row == fila) {
+                    c.setBackground(Color.YELLOW);
+                    c.setForeground(Color.BLACK);
+                } else {
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                }
+                return c;
             }
-        }
+        });
+        TableProgramas.repaint();
 
-        if (origen.matches(PATRON_DIRECCION)) {
-            int num = Integer.parseInt(origen.substring(1, origen.length() - 1));
-            if (num < 0 || num > 15) {
-                errores.append("Línea ").append(numLinea).append(": Dirección origen fuera de rango (0-15)\n");
-                errorEncontrado = true;
-            }
-        } else if (origen.matches(PATRON_NUMERO_SIMPLE)) {
-            int num = Integer.parseInt(origen);
-            if (num < 0 || num > 511) {
-                errores.append("Línea ").append(numLinea).append(": Número origen fuera de rango (0-511)\n");
-                errorEncontrado = true;
-            }
-        }
-
-        return !errorEncontrado;
+        // Restaurar después de 1.5 segundos
+        Timer timer = new Timer(1500, e -> {
+            TableProgramas.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value,
+                        boolean isSelected, boolean hasFocus, int row, int column) {
+                    Component c = super.getTableCellRendererComponent(table, value,
+                            isSelected, hasFocus, row, column);
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                    return c;
+                }
+            });
+            TableProgramas.repaint();
+            ((Timer) e.getSource()).stop();
+        });
+        timer.setRepeats(false);
+        timer.start();
     }
 
-    private void procesarInstruccionMOV(String instruccion, int dirMemoriaPrograma) {
+    private void procesarInstruccionMOV(String instruc, int dirMemoriaPrograma) {
         // Guardar la instrucción en memoria de programas
-        memoria.escribirPrograma(dirMemoriaPrograma, instruccion, "Usuario");
+        memoria.escribirPrograma(dirMemoriaPrograma, instruc, "Usuario");
 
         // Procesar efectos en memoria de datos si el destino es una dirección
-        String[] partes = instruccion.split("\\s*,\\s*|\\s+");
+        String[] partes = instruc.split("\\s*,\\s*|\\s+");
         String destino = partes[1];
         String origen = partes[2];
+        int valor;
 
-      
+        if (destino.startsWith("A") || destino.startsWith("B") || destino.startsWith("C") || destino.startsWith("D")) {
+            valor = Integer.parseInt(origen);
+            int resaltado = 0;
+            registro.getBancoRegistros().setValorRegistro(destino, valor);
+            registro.getBancoRegistros().configurarTabla(TableRegistros);
+            resaltarRegistro(obtenerIndice(destino));
+        }
 
         if (destino.startsWith("[") && destino.endsWith("]")) {
             int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
-            int valor;
 
             if (origen.startsWith("[") && origen.endsWith("]")) {
                 // MOV [x], [y] - Copiar de dirección a dirección
                 int dirOrigen = Integer.parseInt(origen.substring(1, origen.length() - 1));
                 valor = memoria.leerDato(dirOrigen);
-            } else if (origen.matches(PATRON_NUMERO_SIMPLE)) {
+            } else if (origen.matches(instruccion.PATRON_NUMERO_SIMPLE)) {
                 // MOV [x], numero
                 valor = Integer.parseInt(origen);
             } else {
@@ -288,6 +355,7 @@ public class Computador extends javax.swing.JPanel {
 
             // Actualizar la tabla de datos
             memoria.configurarTablaDatos(TableDatos);
+            registro.configurarTablaRegistros(TableRegistros);
         }
     }
 
@@ -312,6 +380,24 @@ public class Computador extends javax.swing.JPanel {
         TableDatos.repaint();
     }
 
+    public static int obtenerIndice(String registro) {
+        String[] letras = {"A", "B", "C", "D"};
+        String[] sufijos = {"H", "L", "X"};
+
+        int index = 0;
+
+        for (String letra : letras) {
+            for (String sufijo : sufijos) {
+                if ((letra + sufijo).equalsIgnoreCase(registro)) {
+                    return index;
+                }
+                index++;
+            }
+        }
+
+        throw new IllegalArgumentException("Registro inválido: " + registro);
+    }
+
     private void resaltarDireccionMemoria(int direccion) {
         // Cambiar color temporalmente
         resaltarCeldaMemoria(direccion, 2, Color.CYAN, Color.BLACK); // Columna 2 es "Valor"
@@ -325,6 +411,46 @@ public class Computador extends javax.swing.JPanel {
         timer.start();
     }
 
+    private void resaltarRegistro(int fila) {
+        // Cambiar color temporalmente
+        TableRegistros.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+
+                if (row == fila) {
+                    c.setBackground(Color.CYAN);
+                    c.setForeground(Color.BLACK);
+                } else {
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                }
+                return c;
+            }
+        });
+        TableRegistros.repaint();
+
+        // Restaurar después de 1.5 segundos
+        Timer timer = new Timer(1500, e -> {
+            TableRegistros.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value,
+                        boolean isSelected, boolean hasFocus, int row, int column) {
+                    Component c = super.getTableCellRendererComponent(table, value,
+                            isSelected, hasFocus, row, column);
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                    return c;
+                }
+            });
+            TableRegistros.repaint();
+            ((Timer) e.getSource()).stop();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
 
     public static void main(String[] args) {
         ProyectoComputador.main(args);
@@ -884,6 +1010,11 @@ public class Computador extends javax.swing.JPanel {
         ButtonEjecutar.setBackground(new java.awt.Color(0, 0, 0));
         ButtonEjecutar.setForeground(new java.awt.Color(255, 255, 255));
         ButtonEjecutar.setText("Ejecutar");
+        ButtonEjecutar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ButtonEjecutarActionPerformed(evt);
+            }
+        });
 
         ButtonInterrupcion.setBackground(new java.awt.Color(0, 0, 0));
         ButtonInterrupcion.setForeground(new java.awt.Color(255, 255, 255));
@@ -972,8 +1103,12 @@ public class Computador extends javax.swing.JPanel {
     }//GEN-LAST:event_FieldIOActionPerformed
 
     private void ButtonInterrupcionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ButtonInterrupcionActionPerformed
-        // TODO add your handling code here:
+        cargarInstrucciones();
     }//GEN-LAST:event_ButtonInterrupcionActionPerformed
+
+    private void ButtonEjecutarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ButtonEjecutarActionPerformed
+
+    }//GEN-LAST:event_ButtonEjecutarActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
