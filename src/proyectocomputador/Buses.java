@@ -12,10 +12,6 @@ import proyectocomputador.Componentes.Buses.BusControl;
 import proyectocomputador.Componentes.Buses.BusDatos;
 import proyectocomputador.Componentes.Buses.BusDirecciones;
 
-/**
- *
- * @author 5731
- */
 public class Buses {
 
     private BusControl busControl;

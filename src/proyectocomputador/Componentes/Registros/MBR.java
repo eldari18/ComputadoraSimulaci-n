@@ -9,14 +9,16 @@ package proyectocomputador.Componentes.Registros;
  * @author 57313
  */
 public class MBR {
-    private String valor;
 
-    public String getValor() {
-        return valor;
+    private int dato; // Dato leído/escrito
+
+    // Getters y Setters
+    public void setDato(int dato) {
+        this.dato = dato;
     }
 
-    public void setValor(String valor) {
-        this.valor = valor;
+    public int getDato() {
+        return dato;
     }
 }
 

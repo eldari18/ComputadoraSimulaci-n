@@ -9,18 +9,19 @@ package proyectocomputador.Componentes.CPU;
  * @author 57313
  */
 public class PC {
-    private int valor = 0;
 
-    public int getValor() {
-        return valor;
-    }
+    private int direccion; // Dirección actual
 
     public void incrementar() {
-        valor++;
+        direccion++;
     }
 
-    public void setValor(int v) {
-        valor = v;
+    public void setDireccion(int dir) {
+        this.direccion = dir;
+    }
+
+    public int getDireccion() {
+        return direccion;
     }
 }
 

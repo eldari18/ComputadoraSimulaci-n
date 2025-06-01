@@ -2,7 +2,10 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package proyectocomputador.Componentes.Memoria;
+package proyectocomputador;
+
+import proyectocomputador.Componentes.Memoria.MemoriaDatos;
+import proyectocomputador.Componentes.Memoria.MemoriaPrograma;
 
 /**
  *

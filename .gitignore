@@ -1,2 +1,10 @@
+<<<<<<< HEAD
 /dist/
 .env
+=======
+/nbproject/private/
+/build/
+/build/
+/dist/
+/dist/
+>>>>>>> 47747e4e25ed347ee7e816f32cb6dccba170157b
