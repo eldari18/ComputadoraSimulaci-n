@@ -9,5 +9,18 @@ package proyectocomputador.Componentes.CPU;
  * @author 57313
  */
 public class PC {
-    
+    private int valor = 0;
+
+    public int getValor() {
+        return valor;
+    }
+
+    public void incrementar() {
+        valor++;
+    }
+
+    public void setValor(int v) {
+        valor = v;
+    }
 }
+

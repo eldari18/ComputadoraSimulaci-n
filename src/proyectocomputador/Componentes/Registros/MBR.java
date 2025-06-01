@@ -9,5 +9,14 @@ package proyectocomputador.Componentes.Registros;
  * @author 57313
  */
 public class MBR {
-    
+    private String valor;
+
+    public String getValor() {
+        return valor;
+    }
+
+    public void setValor(String valor) {
+        this.valor = valor;
+    }
 }
+

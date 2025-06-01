@@ -3,6 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
 package proyectocomputador;
+  import javax.swing.*;
 
 /**
  *
@@ -18,6 +19,21 @@ public class Computador extends javax.swing.JPanel {
         int a = 0b110;
         int b = 0b111;
         System.out.println("+: "+ (a+b));
+    }
+    
+    public class Ventana {
+        public static void main(String[] args) {
+            SwingUtilities.invokeLater(() -> {
+                JFrame frame = new JFrame("Computador");
+                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                frame.setSize(400, 300);
+
+                // Agregar el JPanel a la ventana
+                frame.add(new Computador());
+
+                frame.setVisible(true);
+            });
+        }
     }
 
     /**

@@ -9,5 +9,14 @@ package proyectocomputador.Componentes.Registros;
  * @author 57313
  */
 public class MAR {
-    
+    private int direccion;
+
+    public int getDireccion() {
+        return direccion;
+    }
+
+    public void setDireccion(int direccion) {
+        this.direccion = direccion;
+    }
 }
+
