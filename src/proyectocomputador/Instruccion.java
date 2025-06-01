@@ -3,6 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package proyectocomputador;
+import java.util.Arrays;
 
 /**
  *
@@ -10,7 +11,7 @@ package proyectocomputador;
  */
 public class Instruccion {
 
-    public static final String[] CODIGOS_OPERACION = {"ADD", "SUB", "MPY", "DIV", "CMP", "MOV", "JMP", "JZ", "JNZ", "LOAD", "RET"};
+    public static final String[] CODIGOS_OPERACION = {"ADD", "SUB", "MPY", "DIV", "CMP", "MOV", "JMP", "JZ", "JNZ", "RET"};
     public static final String PATRON_REGISTRO = "(AX|BX|CX|DX|AL|BL|CL|DL|AH|BH|CH|DH)";
     public static final String PATRON_DIRECCION = "\\[(1[0-5]|[0-9])\\]";
     public static final String PATRON_NUMERO_SIMPLE = "(5[0-1][0-9]|[1-4][0-9][0-9]|[1-9][0-9]|[0-9])";
@@ -88,6 +89,36 @@ public class Instruccion {
                 tipo
         );
     }
+    
+    public boolean validarInstruccion(String linea){
+        if(linea == null || linea.trim().isEmpty()){
+            return false;
+        }
+        String[] partes = linea.split("\\s*,\\s*|\\s+");
+        String var = partes[0];
+        boolean var1 = Arrays.asList(CODIGOS_OPERACION).contains(var);
+        boolean dir = partes.length == 3;
+        return dir && var1;
+    }
+    
+    public boolean validarDestino(String destino){
+        if(destino == null || destino.trim().isEmpty()){
+            return false;
+        }
+        boolean varReg = destino.matches(PATRON_REGISTRO);
+        boolean varDir = destino.matches(PATRON_DIRECCION);
+        
+        return varReg || varDir;
+    }
+    
+    public boolean validarOrigen(String origen){
+        if(origen == null || origen.trim().isEmpty()){
+            return false;
+        }
+        boolean varDato = origen.matches(PATRON_NUMERO_SIMPLE);
+        boolean varDir = origen.matches(PATRON_DIRECCION);
+        return varDato || varDir;
+    }
 
     public boolean validarInstruccionMOV(String linea, int numLinea, StringBuilder errores) {
         // Verificar estructura básica
@@ -144,6 +175,29 @@ public class Instruccion {
             }
         }
 
+        return !errorEncontrado;
+    }
+    
+    
+    
+    public boolean validarInstruccionOperacion(String linea, int numLinea, StringBuilder errores){
+        if (!validarInstruccion(linea)){
+            errores.append("Línea ").append(numLinea).append(": Formato inválido de intrucción.\n");
+            return false;
+        }
+        String[] partes = linea.split("\\s*,\\s*|\\s+");
+        String destino = partes[1];
+        String origen = partes[2];
+        boolean errorEncontrado = false;
+        if(!validarDestino(destino)){
+            errores.append("Línea ").append(numLinea).append(": Formato inválido de destino. Usa dirección de registro o entre un rango correcto de dirección a memoria\n");
+            errorEncontrado = true;
+        }
+        if(!validarOrigen(origen)){
+            errores.append("Línea ").append(numLinea).append(": Formato inválido de origen. Usa dirección de memoria correcto o un valor entero menor a 511.\n");
+            errorEncontrado = true;
+        }
+        
         return !errorEncontrado;
     }
 }

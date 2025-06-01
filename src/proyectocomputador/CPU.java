@@ -36,4 +36,19 @@ public class CPU {
         mar = new MAR();
         mbr = new MBR();
     }
+    
+    // Getters y Setters
+    public void setOperandos(int a, int b) {
+        alu.setOperandos(a, b);
+    }
+
+    public void setOperacion(String op) {
+        alu.setOperacion(op);
+    }
+    
+    public int operar(){
+        return alu.operar();
+    }
+    
+    
 }
