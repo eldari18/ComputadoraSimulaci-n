@@ -10,14 +10,14 @@ package proyectocomputador.Componentes.Buses;
  */
 public class BusDatos {
 
-    private int datos; // Datos transmitidos (instrucción o valor)
+    private String datos; // Datos transmitidos (instrucción o valor)
 
     // Métodos
-    public void setDatos(int datos) {
+    public void setDatos(String datos) {
         this.datos = datos;
     }
 
-    public int getDatos() {
+    public String getDatos() {
         return datos;
     }
 }

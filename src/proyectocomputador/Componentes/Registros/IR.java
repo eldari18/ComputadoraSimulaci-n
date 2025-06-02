@@ -10,13 +10,13 @@ package proyectocomputador.Componentes.Registros;
  */
 public class IR {
 
-    private int instruccion; // Instrucción actual
+    private String instruccion; // Instrucción actual
 
-    public void cargar(int instruccion) {
+    public void cargar(String instruccion) {
         this.instruccion = instruccion;
     }
 
-    public int getInstruccion() {
+    public String getInstruccion() {
         return instruccion;
     }
 }

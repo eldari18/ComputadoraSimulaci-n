@@ -2,6 +2,19 @@
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
-        <group/>
+        <group>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Computador.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Instruccion.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Memoria/MemoriaPrograma.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/CPU.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Buses.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Buses/BusDirecciones.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/MAR.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/CPU/UC.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/IR.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/MBR.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Memoria.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Buses/BusDatos.java</file>
+        </group>
     </open-files>
 </project-private>

@@ -190,11 +190,11 @@ public class Instruccion {
         String origen = partes[2];
         boolean errorEncontrado = false;
         if(!validarDestino(destino)){
-            errores.append("Línea ").append(numLinea).append(": Formato inválido de destino. Usa dirección de registro o entre un rango correcto de dirección a memoria\n");
+            errores.append("Línea ").append(numLinea).append(": Formato inválido de destino. \nUsa dirección de registro o entre un rango correcto de dirección a memoria\n");
             errorEncontrado = true;
         }
         if(!validarOrigen(origen)){
-            errores.append("Línea ").append(numLinea).append(": Formato inválido de origen. Usa dirección de memoria correcto o un valor entero menor a 511.\n");
+            errores.append("Línea ").append(numLinea).append(": Formato inválido de origen. \nUsa dirección de memoria correcto o un valor entero menor a 511.\n");
             errorEncontrado = true;
         }
         

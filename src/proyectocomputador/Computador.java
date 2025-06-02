@@ -73,6 +73,7 @@ public class Computador extends javax.swing.JPanel {
         memoria = new Memoria();
         instruccion = new Instruccion();
         cpu = new CPU();
+        buses = new Buses();
 
         ButtonEjecutar.addActionListener(e -> guardarInstrucciones());
 
@@ -153,27 +154,21 @@ public class Computador extends javax.swing.JPanel {
         String[] lineas = Arrays.stream(texto.split("\\r?\\n"))
                 .filter(linea -> !linea.trim().isEmpty())
                 .toArray(String[]::new);
-
-        // Crear timer para procesamiento secuencial
-        Timer timer = new Timer(1000, null);
-        final int[] index = {0};
-        final int[] direccion = {0};
+        
+        int i = 0;
+        int dir = 0;
+        boolean erroresEnc = false;
         final StringBuilder errores = new StringBuilder();
-        final boolean[] erroresEncontrados = {false};
-        final boolean[] memoriaLlena = {false};
-
-        timer.addActionListener(e -> {
-            if (index[0] >= lineas.length || direccion[0] >= 16) {
-                ((Timer) e.getSource()).stop();
-
+        while (i <16 && i != lineas.length){
+            if (i >= lineas.length || dir >= 16) {
                 // Mostrar resultados finales
-                if (erroresEncontrados[0]) {
+                if (erroresEnc) {
                     JOptionPane.showMessageDialog(this,
                             "Se encontraron errores:\n\n" + errores.toString()
                             + "\nSolo se cargaron las instrucciones válidas.",
                             "Errores en instrucciones",
                             JOptionPane.ERROR_MESSAGE);
-                } else if (memoriaLlena[0]) {
+                } else if (dir >= 16) {
                     JOptionPane.showMessageDialog(this,
                             "Se cargaron solo las primeras 16 instrucciones\nLa memoria de programas está llena",
                             "Advertencia",
@@ -181,46 +176,95 @@ public class Computador extends javax.swing.JPanel {
                 }
                 return;
             }
-
-            String linea = lineas[index[0]].trim();
-            System.out.println("Procesando instruccion " + (index[0] + 1) + ": " + linea);
-            // Procesar instrucción
-            if (linea.toUpperCase().startsWith("MOV ")) {
-                if (instruccion.validarInstruccionMOV(linea, index[0] + 1, errores)) {
-                    memoria.escribirPrograma(index[0], linea, "Usuario");
-                    resaltarCeldaPrograma(index[0]);
-                    procesarInstruccionMOV(linea);
-                    direccion[0]++;
-                }else{
-                    erroresEncontrados[0] = true;
-                }
-            }else if(linea.toUpperCase().startsWith("ADD ") || 
-                        linea.toUpperCase().startsWith("SUB ") || 
-                        linea.toUpperCase().startsWith("MPY ") || 
-                        linea.toUpperCase().startsWith("DIV ")){
-                if (instruccion.validarInstruccionOperacion(linea, index[0] + 1, errores)) {
-                    memoria.escribirPrograma(index[0], linea, "Usuario");
-                    resaltarCeldaPrograma(index[0]);
-                    procesarInstruccionADD(linea);
-                    direccion[0]++;
-                }else{
-                    erroresEncontrados[0] = true;
-                }
-            }else if (linea.matches(instruccion.PATRON_INSTRUCCION)) {
-                memoria.escribirPrograma(direccion[0], linea, "Usuario");
-                resaltarCeldaPrograma(direccion[0]);
-                direccion[0]++;
+            String linea = lineas[i].trim();
+            if (linea.matches(instruccion.PATRON_INSTRUCCION)) {
+                memoria.escribirPrograma(dir, linea, "Usuario");
+                dir++;
             } else {
-                errores.append("Línea ").append(index[0] + 1).append(": Formato de instrucción inválido\n");
-                erroresEncontrados[0] = true;
+                errores.append("Línea ").append(i + 1).append(": Formato de instrucción inválido\n");
+                erroresEnc = true;
             }
+            i++;
+        }
+        // Actualizar tablas
+        memoria.configurarTablaProgramas(TableProgramas);
 
+        // Crear timer para procesamiento secuencial
+        Timer timer = new Timer(1000, null);
+        final int[] index = {0};
+        final int direccion = 0;
+        final boolean erroresEncontrados = false;
+        final String[] instruccion = {""};
+        final String[] instrBin = {""};
+        System.out.println("ayuda");
+        timer.addActionListener(e -> {
+            switch(index[0]){
+                case 0 -> {
+                    this.FieldPC.setText("0000");
+                    cpu.setContadorPc(0);
+                    resaltarRegsitroEstatico(0);
+                    System.out.println("PC");
+                }
+                case 1 ->{
+                    this.FieldMAR.setText("0000");
+                    cpu.setDireccionMar(cpu.getContadorPc());
+                    resaltarRegsitroEstatico(1);
+                    System.out.println("MAR");
+                }
+                case 2 -> {
+                    this.FieldBusDirecciones.setText("0000");
+                    this.FieldBusControl.setText("00");
+                    buses.setDireccion(cpu.getDireccionMar());
+                    buses.setSeñal("00");
+                    resaltarBuses(0);
+                    resaltarBuses(1);
+                    System.out.println("BUS DIRECCIONES Y CONTROL");
+                }
+                case 3 -> {
+                    instruccion[0] = (memoria.leerPrograma(0))[2];
+                    instrBin[0] = memoria.leerProgramaBinario(0);
+                    resaltarCeldaPrograma(0);
+                    System.out.println("PROGRAMA");
+                }
+                case 4 ->{
+                    this.FieldDatos.setText(instrBin[0]);
+                    buses.setDato(instrBin[0]);
+                    resaltarBuses(2);
+                    System.out.println("BUS DATOS");
+                }
+                case 5 -> {
+                    this.FieldMBR.setText(instrBin[0]);
+                    cpu.setDatoMbr(instrBin[0]);
+                    resaltarRegsitroEstatico(3);
+                    System.out.println("MBR");
+                }
+                case 6 -> {
+                    this.FieldIR.setText(instrBin[0]);
+                    cpu.cargarIr(instrBin[0]);
+                    resaltarRegsitroEstatico(4);
+                    System.out.println("IR");
+                }
+                case 7 -> {
+                    this.FieldUC.setText(instruccion[0]);
+                    resaltarRegsitroEstatico(2);
+                    System.out.println("UC");
+                }
+                case 8 -> {
+                    String[] partes = instruccion[0].split("\\s*,\\s*|\\s+");
+                    this.FieldUCcodop.setText(partes[0]);
+                    this.FieldUCdestino.setText(partes[1]);
+                    this.FieldUCorigen.setText(partes[2]);
+                    resaltarUC(0);
+                    resaltarUC(1);
+                    resaltarUC(2);                    
+                }
+                default -> {
+                    ((Timer)e.getSource()).stop();
+                    System.out.println("FIN");
+                }
+            }
             index[0]++;
-
-            // Actualizar tablas
-            memoria.configurarTablaProgramas(TableProgramas);
         });
-
         timer.setInitialDelay(0);
         timer.start();
     }
@@ -259,6 +303,26 @@ public class Computador extends javax.swing.JPanel {
         System.out.println("Cargando instrucciones desde memoria...");
         timer.setInitialDelay(0);
         timer.start();
+    }
+    
+    private void ejecutarCodop(String instruccion){
+        String[] linea = instruccion.split("\\s*,\\s*|\\s+");
+        switch(linea[0]){
+            case "MOV" -> {
+                procesarInstruccionMOV(instruccion);
+                break;
+            }
+            case "SUB", "DIV", "MYP", "ADD" -> {
+                procesarInstruccionOP(instruccion);
+                break;
+            }
+            case "JMP", "JZ", "JNZ" ->{
+                break;
+            }
+            case "CMP" ->{
+                break;
+            }
+        }
     }
 
     private void resaltarProcesoCompleto(String instru, int dirPrograma) {
@@ -373,7 +437,7 @@ public class Computador extends javax.swing.JPanel {
         }
     }
     
-    private void procesarInstruccionADD(String linea){
+    private void procesarInstruccionOP(String linea){
         // Procesar efectos en memoria de datos si el destino es una dirección
         String[] partes = linea.split("\\s*,\\s*|\\s+");
         
@@ -472,7 +536,7 @@ public class Computador extends javax.swing.JPanel {
             registro.configurarTablaRegistros(TableRegistros);
         }
     
-
+    //resaltar los campos deseados
     private void resaltarCeldaMemoria(int fila, int columna, Color colorFondo, Color colorTexto) {
         TableDatos.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
@@ -626,6 +690,155 @@ public class Computador extends javax.swing.JPanel {
         timer.start();
     }
     
+    private void resaltarRegsitroEstatico(int valor){
+        switch(valor){
+            case 0 -> {
+                this.FieldPC.setBackground(Color.CYAN);
+                this.FieldPC.setForeground(Color.BLACK);
+            }
+            case 1 -> {
+                this.FieldMAR.setBackground(Color.CYAN);
+                this.FieldMAR.setForeground(Color.BLACK);
+            }
+            case 2 -> {
+                this.FieldUC.setBackground(Color.CYAN);
+                this.FieldUC.setForeground(Color.BLACK);
+            }
+            case 3 -> {
+                this.FieldMBR.setBackground(Color.CYAN);
+                this.FieldMBR.setForeground(Color.BLACK);
+            }
+            case 4 -> {
+                this.FieldIR.setBackground(Color.CYAN);
+                this.FieldIR.setForeground(Color.BLACK);
+            }
+            case 5 -> {
+                this.FieldPSW.setBackground(Color.CYAN);
+                this.FieldPSW.setForeground(Color.BLACK);
+            }
+        }
+        
+        Timer timer = new Timer(1000, e -> {
+            switch(valor){
+            case 0 -> {
+                this.FieldPC.setBackground(Color.BLACK);
+                this.FieldPC.setForeground(Color.WHITE);
+                }
+            case 1 -> {
+                this.FieldMAR.setBackground(Color.BLACK);
+                this.FieldMAR.setForeground(Color.WHITE);
+                }
+            case 2 -> {
+                this.FieldUC.setBackground(Color.BLACK);
+                this.FieldUC.setForeground(Color.WHITE);
+                }
+            case 3 -> {
+                this.FieldMBR.setBackground(Color.BLACK);
+                this.FieldMBR.setForeground(Color.WHITE);
+                }
+            case 4 -> {
+                this.FieldIR.setBackground(Color.BLACK);
+                this.FieldIR.setForeground(Color.WHITE);
+                }
+            case 5 -> {
+                this.FieldPSW.setBackground(Color.BLACK);
+                this.FieldPSW.setForeground(Color.WHITE);
+                }
+            }
+            ((Timer) e.getSource()).stop();
+        });
+        timer.start();
+    }
+    
+    private void resaltarUC(int uc){
+        switch(uc){
+            case 0 -> {
+                this.FieldUCcodop.setBackground(Color.MAGENTA);
+                this.FieldUCcodop.setForeground(Color.BLACK);
+            }
+            case 1 -> {
+                this.FieldUCdestino.setBackground(Color.MAGENTA);
+                this.FieldUCdestino.setForeground(Color.BLACK);
+            }
+            case 2 -> {
+                this.FieldUCorigen.setBackground(Color.MAGENTA);
+                this.FieldUCorigen.setForeground(Color.BLACK);
+            }
+            case 3 -> {
+                this.FieldUCdestinoValor.setBackground(Color.CYAN);
+                this.FieldUCdestinoValor.setForeground(Color.BLACK);
+            }
+            case 4 -> {
+                this.FieldUCorigenValor.setBackground(Color.CYAN);
+                this.FieldUCorigenValor.setForeground(Color.BLACK);
+            }
+            
+        }
+        
+        Timer timer = new Timer(1000, e -> {
+            switch(uc){
+            case 0 -> {
+                this.FieldUCcodop.setBackground(Color.BLACK);
+                this.FieldUCcodop.setForeground(Color.WHITE);
+                }
+            case 1 -> {
+                this.FieldUCdestino.setBackground(Color.BLACK);
+                this.FieldUCdestino.setForeground(Color.WHITE);
+                }
+            case 2 -> {
+                this.FieldUCorigen.setBackground(Color.BLACK);
+                this.FieldUCorigen.setForeground(Color.WHITE);
+                }
+            case 3 -> {
+                this.FieldUCdestinoValor.setBackground(Color.BLACK);
+                this.FieldUCdestinoValor.setForeground(Color.WHITE);
+                }
+            case 4 -> {
+                this.FieldUCorigenValor.setBackground(Color.BLACK);
+                this.FieldUCorigenValor.setForeground(Color.WHITE);
+                }
+            }
+            ((Timer) e.getSource()).stop();
+        });
+        timer.start();
+    }
+    
+    private void resaltarBuses(int bus){
+        switch(bus){
+            case 0 -> {
+                this.FieldBusControl.setBackground(Color.MAGENTA);
+                this.FieldBusControl.setForeground(Color.BLACK);
+            }
+            case 1 -> {
+                this.FieldBusDirecciones.setBackground(Color.MAGENTA);
+                this.FieldBusDirecciones.setForeground(Color.BLACK);
+            }
+            case 2 -> {
+                this.FieldDatos.setBackground(Color.MAGENTA);
+                this.FieldDatos.setForeground(Color.BLACK);
+            }
+        }
+        
+        Timer timer = new Timer(1000, e -> {
+            switch(bus){
+            case 0 -> {
+                this.FieldBusControl.setBackground(Color.BLACK);
+                this.FieldBusControl.setForeground(Color.WHITE);
+                }
+            case 1 -> {
+                this.FieldBusDirecciones.setBackground(Color.BLACK);
+                this.FieldBusDirecciones.setForeground(Color.WHITE);
+                }
+            case 2 -> {
+                this.FieldDatos.setBackground(Color.BLACK);
+                this.FieldDatos.setForeground(Color.WHITE);
+                }
+            }
+            ((Timer) e.getSource()).stop();
+        });
+        timer.start();
+    }
+    
     public static void main(String[] args) {
         ProyectoComputador.main(args);
     }
@@ -676,6 +889,12 @@ public class Computador extends javax.swing.JPanel {
         FieldALU2_2 = new javax.swing.JTextField();
         FieldALU1_1 = new javax.swing.JTextField();
         FieldALU1_2 = new javax.swing.JTextField();
+        FieldUCcodop = new javax.swing.JTextField();
+        FieldUCdestino = new javax.swing.JTextField();
+        FieldUCorigen = new javax.swing.JTextField();
+        FieldUCorigenValor = new javax.swing.JTextField();
+        FieldUCdestinoValor = new javax.swing.JTextField();
+        LabelUC1 = new javax.swing.JLabel();
         PanelIO = new javax.swing.JPanel();
         LabelIO = new javax.swing.JLabel();
         FieldIO = new javax.swing.JTextField();
@@ -697,6 +916,7 @@ public class Computador extends javax.swing.JPanel {
         setBackground(new java.awt.Color(0, 0, 0));
 
         PanelMemoriaProgramas.setBackground(new java.awt.Color(0, 0, 0));
+        PanelMemoriaProgramas.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelMemoriaProgramas.setForeground(new java.awt.Color(255, 255, 255));
         LabelMemoriaProgramas.setText("Memoria Programas");
@@ -741,6 +961,7 @@ public class Computador extends javax.swing.JPanel {
         );
 
         PanelBusControl.setBackground(new java.awt.Color(0, 0, 0));
+        PanelBusControl.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelBusControl.setBackground(new java.awt.Color(255, 255, 255));
         LabelBusControl.setForeground(new java.awt.Color(255, 255, 255));
@@ -774,6 +995,7 @@ public class Computador extends javax.swing.JPanel {
         );
 
         PanelBusDirecciones.setBackground(new java.awt.Color(0, 0, 0));
+        PanelBusDirecciones.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelBusDirecciones.setForeground(new java.awt.Color(255, 255, 255));
         LabelBusDirecciones.setText("Bus Direcciones");
@@ -806,6 +1028,7 @@ public class Computador extends javax.swing.JPanel {
         );
 
         PanelBusDatos.setBackground(new java.awt.Color(0, 0, 0));
+        PanelBusDatos.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelBusDatos.setForeground(new java.awt.Color(255, 255, 255));
         LabelBusDatos.setText("Bus Datos");
@@ -842,6 +1065,7 @@ public class Computador extends javax.swing.JPanel {
         );
 
         PanelCPU.setBackground(new java.awt.Color(0, 0, 0));
+        PanelCPU.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 1, true));
 
         LabelMAR.setForeground(new java.awt.Color(255, 255, 255));
         LabelMAR.setText("MAR");
@@ -933,11 +1157,34 @@ public class Computador extends javax.swing.JPanel {
         FieldALU1_2.setForeground(new java.awt.Color(255, 255, 255));
         FieldALU1_2.setText("...");
 
+        FieldUCcodop.setBackground(new java.awt.Color(0, 0, 0));
+        FieldUCcodop.setForeground(new java.awt.Color(255, 255, 255));
+        FieldUCcodop.setText("...");
+
+        FieldUCdestino.setBackground(new java.awt.Color(0, 0, 0));
+        FieldUCdestino.setForeground(new java.awt.Color(255, 255, 255));
+        FieldUCdestino.setText("...");
+
+        FieldUCorigen.setBackground(new java.awt.Color(0, 0, 0));
+        FieldUCorigen.setForeground(new java.awt.Color(255, 255, 255));
+        FieldUCorigen.setText("...");
+
+        FieldUCorigenValor.setBackground(new java.awt.Color(0, 0, 0));
+        FieldUCorigenValor.setForeground(new java.awt.Color(255, 255, 255));
+        FieldUCorigenValor.setText("...");
+
+        FieldUCdestinoValor.setBackground(new java.awt.Color(0, 0, 0));
+        FieldUCdestinoValor.setForeground(new java.awt.Color(255, 255, 255));
+        FieldUCdestinoValor.setText("...");
+
+        LabelUC1.setForeground(new java.awt.Color(255, 255, 255));
+        LabelUC1.setText("INSTRUCTION");
+
         javax.swing.GroupLayout PanelCPULayout = new javax.swing.GroupLayout(PanelCPU);
         PanelCPU.setLayout(PanelCPULayout);
         PanelCPULayout.setHorizontalGroup(
             PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(PanelCPULayout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
                 .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(PanelCPULayout.createSequentialGroup()
                         .addContainerGap()
@@ -960,37 +1207,20 @@ public class Computador extends javax.swing.JPanel {
                                             .addComponent(FieldALU1_2, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE))
                                         .addComponent(FieldALU1))
                                     .addComponent(ImageALU2))
-                                .addGap(0, 0, Short.MAX_VALUE)))
+                                .addGap(0, 27, Short.MAX_VALUE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
                     .addGroup(PanelCPULayout.createSequentialGroup()
                         .addGap(74, 74, 74)
                         .addComponent(LabelRegistros)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addGroup(PanelCPULayout.createSequentialGroup()
+                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
                         .addComponent(LabelIR)
                         .addGap(83, 83, 83))
-                    .addGroup(PanelCPULayout.createSequentialGroup()
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
                         .addComponent(FieldIR)
                         .addContainerGap())
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, PanelCPULayout.createSequentialGroup()
-                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(FieldMBR)
-                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                                        .addComponent(LabelMBR)
-                                        .addGap(72, 72, 72))
-                                    .addComponent(FieldMAR, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                                    .addComponent(LabelMAR)
-                                    .addGap(72, 72, 72))
-                                .addComponent(FieldPC, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
-                                .addComponent(LabelPC)
-                                .addGap(77, 77, 77)))
-                        .addContainerGap())
-                    .addGroup(PanelCPULayout.createSequentialGroup()
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
                         .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addGroup(PanelCPULayout.createSequentialGroup()
                                 .addGap(80, 80, 80)
@@ -998,12 +1228,40 @@ public class Computador extends javax.swing.JPanel {
                                 .addGap(77, 77, 77))
                             .addComponent(FieldUC))
                         .addContainerGap())
-                    .addGroup(PanelCPULayout.createSequentialGroup()
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
                         .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(FieldPSW, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(FieldMBR, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addComponent(LabelMBR)
+                                .addGap(72, 72, 72))
+                            .addComponent(FieldMAR, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addComponent(LabelMAR)
+                                .addGap(72, 72, 72))
+                            .addComponent(FieldPC, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addComponent(LabelPC)
+                                .addGap(77, 77, 77))
+                            .addComponent(FieldPSW, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
                             .addGroup(javax.swing.GroupLayout.Alignment.LEADING, PanelCPULayout.createSequentialGroup()
                                 .addGap(75, 75, 75)
                                 .addComponent(LabelPSW)))
+                        .addContainerGap())
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanelCPULayout.createSequentialGroup()
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(FieldUCcodop, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(PanelCPULayout.createSequentialGroup()
+                                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(FieldUCdestino, javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(FieldUCorigen))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(FieldUCorigenValor, javax.swing.GroupLayout.DEFAULT_SIZE, 84, Short.MAX_VALUE)
+                                    .addComponent(FieldUCdestinoValor))))
+                        .addContainerGap())
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addGap(50, 50, 50)
+                        .addComponent(LabelUC1)
                         .addContainerGap())))
         );
         PanelCPULayout.setVerticalGroup(
@@ -1017,14 +1275,42 @@ public class Computador extends javax.swing.JPanel {
                     .addComponent(FieldALU1_1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(FieldALU1_2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(14, 14, 14)
-                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(PanelCPULayout.createSequentialGroup()
+                        .addComponent(ImageALU1)
+                        .addGap(18, 18, 18)
+                        .addComponent(FieldALU1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(FieldALU2_1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(FieldALU2_2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
+                        .addComponent(ImageALU2)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(FieldALU2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(LabelRegistros)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 97, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(PanelCPULayout.createSequentialGroup()
                         .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(PanelCPULayout.createSequentialGroup()
                                 .addGap(22, 22, 22)
                                 .addComponent(FieldUC, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(LabelUC))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(LabelUC1)
+                        .addGap(8, 8, 8)
+                        .addComponent(FieldUCcodop, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(FieldUCdestino, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(FieldUCdestinoValor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(FieldUCorigen, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(FieldUCorigenValor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(LabelPSW)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(FieldPSW, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -1039,28 +1325,12 @@ public class Computador extends javax.swing.JPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(LabelMBR)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(FieldMBR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 4, Short.MAX_VALUE))
-                    .addGroup(PanelCPULayout.createSequentialGroup()
-                        .addComponent(ImageALU1)
-                        .addGap(18, 18, 18)
-                        .addComponent(FieldALU1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGroup(PanelCPULayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(FieldALU2_1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(FieldALU2_2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
-                        .addComponent(ImageALU2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(FieldALU2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(LabelRegistros)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 97, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(FieldMBR, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(17, 17, 17))
         );
 
         PanelIO.setBackground(new java.awt.Color(0, 0, 0));
+        PanelIO.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelIO.setForeground(new java.awt.Color(255, 255, 255));
         LabelIO.setText("I/O");
@@ -1109,6 +1379,7 @@ public class Computador extends javax.swing.JPanel {
         LabelInstrucciones.setText("Comando");
 
         PanelProcesos.setBackground(new java.awt.Color(0, 0, 0));
+        PanelProcesos.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelPROCESOS.setForeground(new java.awt.Color(255, 255, 255));
         LabelPROCESOS.setText("Descripción proceso");
@@ -1156,6 +1427,7 @@ public class Computador extends javax.swing.JPanel {
         );
 
         PanelMemoriaDatos.setBackground(new java.awt.Color(0, 0, 0));
+        PanelMemoriaDatos.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(255, 255, 255), 3, true));
 
         LabelMemoriaDatos.setForeground(new java.awt.Color(255, 255, 255));
         LabelMemoriaDatos.setText("Memoria Datos");
@@ -1287,7 +1559,7 @@ public class Computador extends javax.swing.JPanel {
                             .addComponent(PanelMemoriaProgramas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(18, 18, 18)
                         .addComponent(PanelMemoriaDatos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(28, Short.MAX_VALUE))
+                .addContainerGap(22, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
@@ -1323,6 +1595,11 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JTextField FieldPC;
     private javax.swing.JTextField FieldPSW;
     private javax.swing.JTextField FieldUC;
+    private javax.swing.JTextField FieldUCcodop;
+    private javax.swing.JTextField FieldUCdestino;
+    private javax.swing.JTextField FieldUCdestinoValor;
+    private javax.swing.JTextField FieldUCorigen;
+    private javax.swing.JTextField FieldUCorigenValor;
     private javax.swing.JLabel ImageALU1;
     private javax.swing.JLabel ImageALU2;
     private javax.swing.JLabel LabelBusControl;
@@ -1343,6 +1620,7 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JTextField LabelProceso3;
     private javax.swing.JLabel LabelRegistros;
     private javax.swing.JLabel LabelUC;
+    private javax.swing.JLabel LabelUC1;
     private javax.swing.JPanel PanelBusControl;
     private javax.swing.JPanel PanelBusDatos;
     private javax.swing.JPanel PanelBusDirecciones;

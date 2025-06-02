@@ -10,14 +10,14 @@ package proyectocomputador.Componentes.Registros;
  */
 public class MBR {
 
-    private int dato; // Dato leído/escrito
+    private String dato; // Dato leído/escrito
 
     // Getters y Setters
-    public void setDato(int dato) {
+    public void setDato(String dato) {
         this.dato = dato;
     }
 
-    public int getDato() {
+    public String getDato() {
         return dato;
     }
 }

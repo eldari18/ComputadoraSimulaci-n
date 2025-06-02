@@ -51,4 +51,8 @@ public class Memoria {
     public String[] leerPrograma(int direccion) {
         return memoriaProgramas.leerPrograma(direccion);
     }
+    
+    public String leerProgramaBinario(int direccion){
+        return memoriaProgramas.leerProgramaBin(direccion);
+    }
 }

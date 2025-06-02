@@ -39,16 +39,100 @@ public class CPU {
     
     // Getters y Setters
     public void setOperandos(int a, int b) {
-        alu.setOperandos(a, b);
+        getAlu().setOperandos(a, b);
     }
 
     public void setOperacion(String op) {
-        alu.setOperacion(op);
+        getAlu().setOperacion(op);
     }
     
     public int operar(){
-        return alu.operar();
+        return getAlu().operar();
     }
+
+    public int getContadorPc() {
+        return getPc().getDireccion();
+    }
+
+    public void setContadorPc(int dir) {
+        getPc().setDireccion(dir);
+    }
+    public String getInstruccionUc() {
+        return getUc().getInstruccionActual();
+    }
+    
+    public void decodificarUc(String instruccion) {
+        getUc().decodificar(instruccion);
+    }
+    
+    public String getInstruccionIr() {
+        return getIr().getInstruccion();
+    }
+
+    public void cargarIr(String instruccion) {
+        getIr().cargar(instruccion);
+    }
+    
+    public int getDireccionMar() {
+        return getMar().getDireccion();
+    }
+
+    public void setDireccionMar(int dir) {
+        getMar().setDireccion(dir);
+    }
+
+    public String getDatoMbr() {
+        return getMbr().getDato();
+    }
+
+    public void setDatoMbr(String dato) {
+        getMbr().setDato(dato);
+    }
+    
+    /**
+     * @return the alu
+     */
+    public ALU getAlu() {
+        return alu;
+    }
+
+    /**
+     * @return the pc
+     */
+    public PC getPc() {
+        return pc;
+    }
+
+    /**
+     * @return the uc
+     */
+    public UC getUc() {
+        return uc;
+    }
+
+    /**
+     * @return the ir
+     */
+    public IR getIr() {
+        return ir;
+    }
+
+    /**
+     * @return the mar
+     */
+    public MAR getMar() {
+        return mar;
+    }
+
+    /**
+     * @return the mbr
+     */
+    public MBR getMbr() {
+        return mbr;
+    }
+    
+    
+    
     
     
 }
