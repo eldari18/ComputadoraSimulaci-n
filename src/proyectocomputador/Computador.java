@@ -14,6 +14,7 @@ import java.awt.Component;
 import java.awt.Image;
 import java.io.File;
 import java.util.Arrays;
+import java.util.function.Consumer;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -203,13 +204,11 @@ public class Computador extends javax.swing.JPanel {
                     this.FieldPC.setText("0000");
                     cpu.setContadorPc(0);
                     resaltarRegsitroEstatico(0);
-                    System.out.println("PC");
                 }
                 case 1 ->{
                     this.FieldMAR.setText("0000");
                     cpu.setDireccionMar(cpu.getContadorPc());
                     resaltarRegsitroEstatico(1);
-                    System.out.println("MAR");
                 }
                 case 2 -> {
                     this.FieldBusDirecciones.setText("0000");
@@ -218,36 +217,30 @@ public class Computador extends javax.swing.JPanel {
                     buses.setSeñal("00");
                     resaltarBuses(0);
                     resaltarBuses(1);
-                    System.out.println("BUS DIRECCIONES Y CONTROL");
                 }
                 case 3 -> {
                     instruccion[0] = (memoria.leerPrograma(0))[2];
                     instrBin[0] = memoria.leerProgramaBinario(0);
                     resaltarCeldaPrograma(0);
-                    System.out.println("PROGRAMA");
                 }
                 case 4 ->{
                     this.FieldDatos.setText(instrBin[0]);
                     buses.setDato(instrBin[0]);
                     resaltarBuses(2);
-                    System.out.println("BUS DATOS");
                 }
                 case 5 -> {
                     this.FieldMBR.setText(instrBin[0]);
                     cpu.setDatoMbr(instrBin[0]);
                     resaltarRegsitroEstatico(3);
-                    System.out.println("MBR");
                 }
                 case 6 -> {
                     this.FieldIR.setText(instrBin[0]);
                     cpu.cargarIr(instrBin[0]);
                     resaltarRegsitroEstatico(4);
-                    System.out.println("IR");
                 }
                 case 7 -> {
                     this.FieldUC.setText(instruccion[0]);
                     resaltarRegsitroEstatico(2);
-                    System.out.println("UC");
                 }
                 case 8 -> {
                     String[] partes = instruccion[0].split("\\s*,\\s*|\\s+");
@@ -256,11 +249,11 @@ public class Computador extends javax.swing.JPanel {
                     this.FieldUCorigen.setText(partes[2]);
                     resaltarUC(0);
                     resaltarUC(1);
-                    resaltarUC(2);                    
+                    resaltarUC(2);
+                    ejecutarCodop(instruccion[0]);
                 }
                 default -> {
                     ((Timer)e.getSource()).stop();
-                    System.out.println("FIN");
                 }
             }
             index[0]++;
@@ -269,42 +262,6 @@ public class Computador extends javax.swing.JPanel {
         timer.start();
     }
 
-    private void cargarInstrucciones() {
-        // Crear timer para mostrar instrucciones secuencialmente
-        Timer timer = new Timer(1000, null);
-        final int[] index = {0};
-        final int[] instruccionesMostradas = {0};
-
-        timer.addActionListener(e -> {
-            // Leer la instrucción en la posición actual
-            String[] programa = memoria.leerPrograma(index[0]);
-            String instruccion = programa[0];
-            String tipo = programa[3];
-
-            // Solo mostrar instrucciones de usuario (ignorar "NOP" del sistema)
-            if ("Usuario".equals(tipo) && !"NOP".equals(instruccion)) {
-                System.out.println("Instrucción " + (instruccionesMostradas[0] + 1)
-                        + " (Dirección " + index[0] + "): " + instruccion);
-                instruccionesMostradas[0]++;
-
-                // Resaltar la celda en la tabla de programas
-                resaltarCeldaPrograma(index[0]);
-            }
-
-            index[0]++;
-
-            // Detener el timer cuando se hayan revisado todas las posiciones
-            if (index[0] >= 16) {
-                ((Timer) e.getSource()).stop();
-                System.out.println("Fin de las instrucciones almacenadas");
-            }
-        });
-
-        System.out.println("Cargando instrucciones desde memoria...");
-        timer.setInitialDelay(0);
-        timer.start();
-    }
-    
     private void ejecutarCodop(String instruccion){
         String[] linea = instruccion.split("\\s*,\\s*|\\s+");
         switch(linea[0]){
@@ -312,7 +269,7 @@ public class Computador extends javax.swing.JPanel {
                 procesarInstruccionMOV(instruccion);
                 break;
             }
-            case "SUB", "DIV", "MYP", "ADD" -> {
+            case "SUB", "DIV", "MPY", "ADD" -> {
                 procesarInstruccionOP(instruccion);
                 break;
             }
@@ -324,113 +281,70 @@ public class Computador extends javax.swing.JPanel {
             }
         }
     }
-
-    private void resaltarProcesoCompleto(String instru, int dirPrograma) {
-        // Resaltar en tabla de programas
-        resaltarCeldaPrograma(dirPrograma);
-
-        // Procesar efectos de la instrucción MOV
-        if (instru.toUpperCase().startsWith("MOV ")) {
-            String[] partes = instru.split("\\s*,\\s*|\\s+");
-            String destino = partes[1];
-            String origen = partes[2];
-
-            // Resaltar registro destino si es un registro
-            if (destino.matches(instruccion.PATRON_REGISTRO)) {
-                resaltarRegistro(obtenerIndice(destino));
-            } // Resaltar dirección memoria si es una dirección
-            else if (destino.matches(instruccion.PATRON_DIRECCION)) {
-                int dirMemoria = Integer.parseInt(destino.substring(1, destino.length() - 1));
-                resaltarDireccionMemoria(dirMemoria);
-            }
-
-            // Resaltar origen si es dirección de memoria
-            if (origen.matches(instruccion.PATRON_DIRECCION)) {
-                int dirMemoria = Integer.parseInt(origen.substring(1, origen.length() - 1));
-                resaltarDireccionMemoria(dirMemoria);
-            }
-        }
-    }
-
-    private void resaltarCeldaPrograma(int fila) {
-        // Cambiar color temporalmente
-        TableProgramas.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value,
-                    boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value,
-                        isSelected, hasFocus, row, column);
-
-                if (row == fila) {
-                    c.setBackground(Color.YELLOW);
-                    c.setForeground(Color.BLACK);
-                } else {
-                    c.setBackground(Color.BLACK);
-                    c.setForeground(Color.WHITE);
-                }
-                return c;
-            }
-        });
-        TableProgramas.repaint();
-
-        // Restaurar después de 1.5 segundos
-        Timer timer = new Timer(1500, e -> {
-            TableProgramas.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-                @Override
-                public Component getTableCellRendererComponent(JTable table, Object value,
-                        boolean isSelected, boolean hasFocus, int row, int column) {
-                    Component c = super.getTableCellRendererComponent(table, value,
-                            isSelected, hasFocus, row, column);
-                    c.setBackground(Color.BLACK);
-                    c.setForeground(Color.WHITE);
-                    return c;
-                }
-            });
-            TableProgramas.repaint();
-            ((Timer) e.getSource()).stop();
-        });
-        timer.setRepeats(false);
-        timer.start();
-    }
-
+    
     private void procesarInstruccionMOV(String instruc) {
-        // Guardar la instrucción en memoria de programas
-
         // Procesar efectos en memoria de datos si el destino es una dirección
         String[] partes = instruc.split("\\s*,\\s*|\\s+");
         String destino = partes[1];
         String origen = partes[2];
-        int valor;
-
+        final int[] valor = {0};
+        Timer timer = new Timer(1000, null);
         if (destino.startsWith("A") || destino.startsWith("B") || destino.startsWith("C") || destino.startsWith("D")) {
-            valor = Integer.parseInt(origen);
-            registro.getBancoRegistros().setValorRegistro(destino, valor);
-            registro.getBancoRegistros().configurarTabla(TableRegistros);
-            resaltarRegistro(obtenerIndice(destino));
-        }
-
-        if (destino.startsWith("[") && destino.endsWith("]")) {
+            final int[] index = {0};
+            timer.addActionListener(e ->{
+                switch(index[0]){
+                    case 0 ->{
+                        resaltarUC(1);
+                        
+                    }
+                    case 1 ->{
+                        resaltarUC(2);
+                        obtenerValorOrigen(origen, val -> {
+                              valor[0] = val;
+                        }, timer);
+                    }
+                    case 2 ->{
+                        registro.getBancoRegistros().setValorRegistro(destino, valor[0]);
+                        registro.getBancoRegistros().configurarTabla(TableRegistros);
+                        resaltarRegistro(obtenerIndice(destino));
+                    }
+                    default -> {
+                        ((Timer)e.getSource()).stop();
+                    }
+                }
+                index[0]++;
+            });
+            timer.setInitialDelay(0);
+            timer.start();
+        } else if (destino.startsWith("[") && destino.endsWith("]")) {
             int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
-
-            if (origen.startsWith("[") && origen.endsWith("]")) {
-                // MOV [x], [y] - Copiar de dirección a dirección
-                int dirOrigen = Integer.parseInt(origen.substring(1, origen.length() - 1));
-                valor = memoria.leerDato(dirOrigen);
-            } else if (origen.matches(instruccion.PATRON_NUMERO_SIMPLE)) {
-                // MOV [x], numero
-                valor = Integer.parseInt(origen);
-            } else {
-                // MOV [x], registro - (valor por defecto 0, deberías implementar registros)
-                valor = 0;
-            }
-
-            // Asegurar que el valor esté en el rango permitido
-            valor = Math.max(0, Math.min(511, valor));
-            memoria.escribirDato(dirMemoriaDatos, valor);
-
-            // Resaltar la celda modificada
-            resaltarDireccionMemoria(dirMemoriaDatos);
-
+            final int[] index = {0, dirMemoriaDatos};
+            timer.addActionListener(e ->{
+                switch(index[0]){
+                    case 0 ->{
+                        resaltarUC(1);
+                    }
+                    case 1 ->{
+                        this.FieldUCdestinoValor.setText(String.format("%4s", Integer.toBinaryString(index[1])).replace(' ', '0')); 
+                        resaltarUC(3);
+                    }
+                    case 2 ->{
+                        resaltarUC(2);
+                        obtenerValorOrigen(origen, val -> {
+                              valor[0] = val;
+                        }, timer);
+                    }
+                    case 3 ->{
+                        llamadoDeBus(destino, valor[0], timer);
+                    }
+                    default -> {
+                        ((Timer)e.getSource()).stop();
+                    }
+                }
+                index[0]++;
+            });
+            timer.setInitialDelay(1000);
+            timer.start();
             // Actualizar la tabla de datos
             memoria.configurarTablaDatos(TableDatos);
             registro.configurarTablaRegistros(TableRegistros);
@@ -440,103 +354,262 @@ public class Computador extends javax.swing.JPanel {
     private void procesarInstruccionOP(String linea){
         // Procesar efectos en memoria de datos si el destino es una dirección
         String[] partes = linea.split("\\s*,\\s*|\\s+");
-        
+        String operacion = partes[0];
         String destino = partes[1];
         String origen = partes[2];
-        int valor1 = 0, valor2, dirMemoriaDatos1 = 0;
-        boolean reg = true;
-        //Reconocer operando 1
+        final int[] valor = {0, 0, 0};
+        Timer timer = new Timer(1000, null);
         if (destino.startsWith("A") || destino.startsWith("B") || destino.startsWith("C") || destino.startsWith("D")) {
-            reg = true;
-            valor1 = registro.getBancoRegistros().getValorRegistro(destino);
-            resaltarRegistro(obtenerIndice(destino));
-        }else if (destino.startsWith("[") && destino.endsWith("]")) {
-            reg = false;
-            dirMemoriaDatos1 = Integer.parseInt(destino.substring(1, destino.length() - 1));
-            valor1 = memoria.leerDato(dirMemoriaDatos1);
-            resaltarDireccionMemoria(dirMemoriaDatos1);
-        }
-        //Reconocer operando 2
-        if(origen.startsWith("[") && origen.endsWith("]")){
-            int dirMemoriaDatos2 = Integer.parseInt(origen.substring(1, origen.length() - 1));
-            valor2 = memoria.leerDato(dirMemoriaDatos2);
-            resaltarDireccionMemoria(dirMemoriaDatos2);
-        }else if(origen.matches(instruccion.PATRON_NUMERO_SIMPLE)){
-            valor2 = Integer.parseInt(origen);
-        }else{
-            valor2 = 0;
-        }
-
-            // Asegurar que el valor esté en el rango permitido
-            valor1 = Math.max(0, Math.min(511, valor1));
-            valor2 = Math.max(0, Math.min(511, valor2));
-            
-            //Setteamos los operando y operación en la ALU
-            cpu.setOperandos(valor1, valor2);
-            cpu.setOperacion(partes[0]);
-            
-            //Hacemos funcional la operación
-            int valor_final= cpu.operar();
-            
-            
-            if(valor_final >= 512 || valor_final < 0){
-                JOptionPane.showMessageDialog(this,
-                            "Los valores genera un valor por encima de 512 omenor que 0, los cuales no se reciben.",
+            final int[] index = {0};
+            timer.addActionListener(e ->{
+                switch(index[0]){
+                    case 0 ->{
+                        resaltarUC(1);
+                    }
+                    case 1 ->{
+                        valor[0] = registro.getBancoRegistros().getValorRegistro(destino);
+                        resaltarRegistro(obtenerIndice(destino));
+                    }
+                    case 2 ->{
+                       this.FieldUCdestinoValor.setText(valor[0]+"");
+                       resaltarUC(3);
+                    }
+                    case 3 ->{
+                        resaltarUC(2);
+                        obtenerValorOrigen(origen, val -> {
+                              valor[1] = val;
+                        }, timer);
+                    }
+                    case 4 ->{
+                        cpu.setOperandos(valor[0], valor[1]);
+                        cpu.setOperacion(operacion);
+                        valor[2] = cpu.operar();
+                        if(valor[2]>512){
+                            JOptionPane.showMessageDialog(this,
+                            "Los valores genera un número por encima de 512 o menor que 0,\n los cuales no se reciben.",
                             "Error de resultado",
                             JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            String valor1B = String.format("%8s", Integer.toBinaryString(valor1)).replace(' ', '0');
-            String valor2B = String.format("%8s", Integer.toBinaryString(valor2)).replace(' ', '0');
-            String valorFinalB = String.format("%8s", Integer.toBinaryString(valor_final)).replace(' ', '0');
-            
-            
-            
-            Timer timer = new Timer(1000, null);
-            final int[] index = {0};
-            final boolean reg_f = reg;
-            final int dir = dirMemoriaDatos1;
-            timer.addActionListener(e -> {
-               if(index[0]>4){
-                   ((Timer) e.getSource()).stop();
-               }
-               switch (index[0]) {
-                case 0 -> {
-                    this.FieldALU1_1.setText(valor1B);
-                    this.resaltarOperandoALU(3);
-                }
-                case 1 -> {
-                    this.FieldALU1_2.setText(valor2B);
-                    this.resaltarOperandoALU(4);
-                }
-                case 2 -> {
-                    this.FieldALU1.setText(valorFinalB);
-                    this.resaltarOperandoALU(1);
-                }
-                case 3 -> {
-                    if(reg_f){
-                        registro.getBancoRegistros().setValorRegistro(destino, valor_final);
-                        resaltarRegistro(obtenerIndice(destino));
-                    }else{
-                        memoria.escribirDato(dir, valor_final);
-                        resaltarDireccionMemoria(dir);
+                            ((Timer)e.getSource()).stop();
+                                return;
+                        }
+                        this.FieldALU1_1.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
+                        resaltarOperandoALU(3);
                     }
-                    memoria.configurarTablaDatos(TableDatos);
-                    registro.configurarTablaRegistros(TableRegistros);
+                    case 5 ->{
+                        this.FieldALU1_2.setText(String.format("%9s", Integer.toBinaryString(valor[1])).replace(' ', '0'));
+                        resaltarOperandoALU(4);
+                    }
+                    case 6 ->{
+                        this.FieldALU1.setText(String.format("%9s", Integer.toBinaryString(valor[2])).replace(' ', '0'));
+                        resaltarOperandoALU(1);
+                    }
+                    case 7 ->{
+                        registro.getBancoRegistros().setValorRegistro(destino, valor[2]);
+                        registro.getBancoRegistros().configurarTabla(TableRegistros);
+                        resaltarRegistro(obtenerIndice(destino));
+                    }
+                    default -> {
+                        ((Timer)e.getSource()).stop();
+                    }
                 }
-                default -> {
-                }
-               }
-               index[0]++;
-           });
+                index[0]++;
+            });
+            timer.setInitialDelay(0);
             timer.start();
-            // Actualizar la tabla de datos
-            memoria.configurarTablaDatos(TableDatos);
-            registro.configurarTablaRegistros(TableRegistros);
+        } else if (destino.startsWith("[") && destino.endsWith("]")) {
+            int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
+            final int[] index = {0, dirMemoriaDatos};
+            timer.addActionListener(e ->{
+                switch(index[0]){
+                    case 0 ->{
+                        resaltarUC(0);
+                    }
+                    case 1 ->{
+                        resaltarUC(1);
+                        obtenerValorDestino(destino, val -> {
+                              valor[0] = val;
+                        }, timer);
+                    }
+                    case 2 ->{
+                        resaltarUC(2);
+                        obtenerValorOrigen(origen, val -> {
+                              valor[1] = val;
+                        }, timer);
+                    }
+                    case 3 ->{
+                        cpu.setOperandos(valor[0], valor[1]);
+                        cpu.setOperacion(operacion);
+                        valor[2] = cpu.operar();
+                        if(valor[2]>512){
+                            JOptionPane.showMessageDialog(this,
+                            "Los valores genera un número por encima de 512 o menor que 0,\n los cuales no se reciben.",
+                            "Error de resultado",
+                            JOptionPane.ERROR_MESSAGE);
+                            ((Timer)e.getSource()).stop();
+                                return;
+                        }
+                        this.FieldALU1_1.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
+                        resaltarOperandoALU(3);
+                    }
+                    case 4 ->{
+                        this.FieldALU1_2.setText(String.format("%9s", Integer.toBinaryString(valor[1])).replace(' ', '0'));
+                        resaltarOperandoALU(4);
+                    }
+                    case 5 ->{
+                        this.FieldALU1.setText(String.format("%9s", Integer.toBinaryString(valor[2])).replace(' ', '0'));
+                        resaltarOperandoALU(1);
+                    }
+                    case 6 ->{
+                        llamadoDeBus(destino, valor[2], timer);
+                    }
+                    default -> {
+                        ((Timer)e.getSource()).stop();
+                    }
+                }
+                index[0]++;
+            });
+            timer.setInitialDelay(1000);
+            timer.start();
         }
+        // Actualizar la tabla de datos
+        memoria.configurarTablaDatos(TableDatos);
+        registro.configurarTablaRegistros(TableRegistros);
+    }
     
-    //resaltar los campos deseados
+    private void pasoBusesMemoriaDatos(String destino, Consumer<Integer> callback, String senal){
+        int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
+        String dirBin = String.format("%4s", Integer.toBinaryString(dirMemoriaDatos)).replace(' ', '0');
+        final int[] index = {0};
+        final int[] valor = {0};
+        Timer timer = new Timer(1000, e -> {
+            switch(index[0]){
+                case 0 ->{
+                    this.FieldMAR.setText(dirBin);
+                    cpu.setDireccionMar(dirMemoriaDatos);
+                    resaltarRegsitroEstatico(1);
+                    break;
+                }
+                case 1 ->{
+                    this.FieldBusDirecciones.setText(dirBin);
+                    this.FieldBusControl.setText(senal);
+                    buses.setDireccion(dirMemoriaDatos);
+                    buses.setSeñal(senal);
+                    resaltarBuses(0);
+                    resaltarBuses(1);
+                    break;
+                }
+                case 2 ->{
+                    valor[0] = memoria.leerDato(dirMemoriaDatos);
+                    resaltarDireccionMemoria(dirMemoriaDatos);
+                    break;
+                }
+                case 3 ->{
+                    this.FieldDatos.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
+                    buses.setDato(Integer.toString(valor[0]));
+                    resaltarBuses(2);
+                    break;
+                }
+                case 4 -> {
+                    this.FieldMBR.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
+                    cpu.setDatoMbr(Integer.toString(valor[0]));
+                    resaltarRegsitroEstatico(3);
+                    break;
+                }
+                default ->{
+                    ((Timer)e.getSource()).stop();
+                    callback.accept(valor[0]);
+                    break;
+                }    
+            }
+            index[0]++;
+        });
+        timer.setInitialDelay(1000);
+        timer.start();
+    }
+    
+    private void guardaBuses(String destino, Consumer<Integer> callback, int dato){
+        int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
+        String dirBin = String.format("%4s", Integer.toBinaryString(dirMemoriaDatos)).replace(' ', '0');
+        final int[] index = {0};
+        Timer timer = new Timer(1000, e -> {
+            switch(index[0]){
+                case 0 ->{
+                    this.FieldMAR.setText(dirBin);
+                    cpu.setDireccionMar(dirMemoriaDatos);
+                    resaltarRegsitroEstatico(1);
+                    break;
+                }
+                case 1 ->{
+                    this.FieldBusDirecciones.setText(dirBin);
+                    this.FieldBusControl.setText("11");
+                    buses.setDireccion(dirMemoriaDatos);
+                    buses.setSeñal("11");
+                    resaltarBuses(0);
+                    resaltarBuses(1);
+                    break;
+                }
+                case 2 ->{
+                    memoria.escribirDato(dirMemoriaDatos, dato);
+                    resaltarDireccionMemoria(dirMemoriaDatos);
+                    break;
+                }
+                default ->{
+                    ((Timer)e.getSource()).stop();
+                    break;
+                }    
+            }
+            index[0]++;
+        });
+        timer.setInitialDelay(0);
+        timer.start();
+    }
+    
+    public void llamadoDeBus(String destino, int dato, Timer timer){
+        timer.stop();
+            guardaBuses(destino, valor -> {
+                resaltarUC(4);
+                timer.start();
+            },dato);
+    }
+    
+    public void obtenerValorDestino(String destino, Consumer<Integer> callback, Timer timer){
+        timer.stop();
+            pasoBusesMemoriaDatos(destino, valor -> {
+                FieldUCdestinoValor.setText(String.valueOf(valor));
+                resaltarUC(3);
+                callback.accept(valor);
+                timer.start();
+            },"10");
+    }
+    
+    private void obtenerValorOrigen(String origen, Consumer<Integer> callback, Timer timer) {
+        if (origen.startsWith("[") && origen.endsWith("]")) {
+            timer.stop();
+            pasoBusesMemoriaDatos(origen, valor -> {
+                FieldUCorigenValor.setText(String.valueOf(valor));
+                resaltarUC(4);
+                callback.accept(valor);
+                timer.start();
+            },"10");
+        }else if (origen.matches(instruccion.PATRON_REGISTRO)) {
+            int valor = registro.getValorRegistro(origen);
+            resaltarRegistro(obtenerIndice(origen));
+            FieldUCorigenValor.setText(String.valueOf(valor));
+            resaltarUC(4);
+            callback.accept(valor);
+        } else if (origen.matches(instruccion.PATRON_NUMERO_SIMPLE)) {
+            int valor = Integer.parseInt(origen);
+            FieldUCorigenValor.setText(String.valueOf(valor));
+            resaltarUC(4);
+            callback.accept(valor);
+        }  else {
+            FieldUCorigenValor.setText("0");
+            resaltarUC(4);
+            callback.accept(0);
+        }
+    }
+    
+    //Resaltar los campos deseados
     private void resaltarCeldaMemoria(int fila, int columna, Color colorFondo, Color colorTexto) {
         TableDatos.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
@@ -557,7 +630,7 @@ public class Computador extends javax.swing.JPanel {
         });
         TableDatos.repaint();
     }
-
+    
     public static int obtenerIndice(String registro) {
         String[] letras = {"A", "B", "C", "D"};
         String[] sufijos = {"H", "L", "X"};
@@ -687,6 +760,74 @@ public class Computador extends javax.swing.JPanel {
             }
             ((Timer) e.getSource()).stop();
         });
+        timer.start();
+    }
+    
+    private void resaltarProcesoCompleto(String instru, int dirPrograma) {
+        // Resaltar en tabla de programas
+        resaltarCeldaPrograma(dirPrograma);
+
+        // Procesar efectos de la instrucción MOV
+        if (instru.toUpperCase().startsWith("MOV ")) {
+            String[] partes = instru.split("\\s*,\\s*|\\s+");
+            String destino = partes[1];
+            String origen = partes[2];
+
+            // Resaltar registro destino si es un registro
+            if (destino.matches(instruccion.PATRON_REGISTRO)) {
+                resaltarRegistro(obtenerIndice(destino));
+            } // Resaltar dirección memoria si es una dirección
+            else if (destino.matches(instruccion.PATRON_DIRECCION)) {
+                int dirMemoria = Integer.parseInt(destino.substring(1, destino.length() - 1));
+                resaltarDireccionMemoria(dirMemoria);
+            }
+
+            // Resaltar origen si es dirección de memoria
+            if (origen.matches(instruccion.PATRON_DIRECCION)) {
+                int dirMemoria = Integer.parseInt(origen.substring(1, origen.length() - 1));
+                resaltarDireccionMemoria(dirMemoria);
+            }
+        }
+    }
+
+    private void resaltarCeldaPrograma(int fila) {
+        // Cambiar color temporalmente
+        TableProgramas.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+
+                if (row == fila) {
+                    c.setBackground(Color.YELLOW);
+                    c.setForeground(Color.BLACK);
+                } else {
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                }
+                return c;
+            }
+        });
+        TableProgramas.repaint();
+
+        // Restaurar después de 1.5 segundos
+        Timer timer = new Timer(1500, e -> {
+            TableProgramas.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value,
+                        boolean isSelected, boolean hasFocus, int row, int column) {
+                    Component c = super.getTableCellRendererComponent(table, value,
+                            isSelected, hasFocus, row, column);
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                    return c;
+                }
+            });
+            TableProgramas.repaint();
+            ((Timer) e.getSource()).stop();
+        });
+        timer.setRepeats(false);
         timer.start();
     }
     
@@ -836,6 +977,42 @@ public class Computador extends javax.swing.JPanel {
             }
             ((Timer) e.getSource()).stop();
         });
+        timer.start();
+    }
+    
+    private void cargarInstrucciones() {
+        // Crear timer para mostrar instrucciones secuencialmente
+        Timer timer = new Timer(1000, null);
+        final int[] index = {0};
+        final int[] instruccionesMostradas = {0};
+
+        timer.addActionListener(e -> {
+            // Leer la instrucción en la posición actual
+            String[] programa = memoria.leerPrograma(index[0]);
+            String instruccion = programa[0];
+            String tipo = programa[3];
+
+            // Solo mostrar instrucciones de usuario (ignorar "NOP" del sistema)
+            if ("Usuario".equals(tipo) && !"NOP".equals(instruccion)) {
+                System.out.println("Instrucción " + (instruccionesMostradas[0] + 1)
+                        + " (Dirección " + index[0] + "): " + instruccion);
+                instruccionesMostradas[0]++;
+
+                // Resaltar la celda en la tabla de programas
+                resaltarCeldaPrograma(index[0]);
+            }
+
+            index[0]++;
+
+            // Detener el timer cuando se hayan revisado todas las posiciones
+            if (index[0] >= 16) {
+                ((Timer) e.getSource()).stop();
+                System.out.println("Fin de las instrucciones almacenadas");
+            }
+        });
+
+        System.out.println("Cargando instrucciones desde memoria...");
+        timer.setInitialDelay(0);
         timer.start();
     }
     

@@ -117,7 +117,8 @@ public class Instruccion {
         }
         boolean varDato = origen.matches(PATRON_NUMERO_SIMPLE);
         boolean varDir = origen.matches(PATRON_DIRECCION);
-        return varDato || varDir;
+        boolean varReg = origen.matches(PATRON_REGISTRO);
+        return varDato || varDir || varReg;
     }
 
     public boolean validarInstruccionMOV(String linea, int numLinea, StringBuilder errores) {

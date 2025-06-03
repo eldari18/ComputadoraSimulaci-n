@@ -7,14 +7,8 @@
             <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Instruccion.java</file>
             <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Memoria/MemoriaPrograma.java</file>
             <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/CPU.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Buses.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Buses/BusDirecciones.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/MAR.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/CPU/UC.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/IR.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/MBR.java</file>
             <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Memoria.java</file>
-            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Buses/BusDatos.java</file>
+            <file>file:/C:/Users/juanj/OneDrive/Documentos/TRABAJOS%20UNIVERSIDAD/6TO%20SEMESTRE/ComputadoraSimulaci-n/src/proyectocomputador/Componentes/Registros/BancoRegistros.java</file>
         </group>
     </open-files>
 </project-private>
