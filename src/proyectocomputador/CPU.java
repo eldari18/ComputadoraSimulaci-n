@@ -10,6 +10,7 @@ import proyectocomputador.Componentes.Registros.IR;
 import proyectocomputador.Componentes.Registros.MAR;
 import proyectocomputador.Componentes.Registros.MBR;
 import proyectocomputador.Componentes.CPU.PC;
+import proyectocomputador.Componentes.CPU.PSW;
 import proyectocomputador.Componentes.CPU.UC;
 
 
@@ -26,6 +27,7 @@ public class CPU {
     private IR ir;
     private MAR mar;
     private MBR mbr;
+    private PSW psw;
 
     public CPU() {
         pc = new PC();
@@ -35,6 +37,7 @@ public class CPU {
         ir = new IR();
         mar = new MAR();
         mbr = new MBR();
+        psw = new PSW();
     }
     
     // Getters y Setters
@@ -89,6 +92,22 @@ public class CPU {
         getMbr().setDato(dato);
     }
     
+    public void setZeroFlag(boolean value){
+        getPsw().setZeroFlag(value);
+    }
+    
+    public boolean isZeroFlag(){
+        return getPsw().isZeroFlag();
+    }
+    
+    public void setEqualsFlag(boolean value){
+        getPsw().setEqualsFlag(value);
+    }
+    
+    public boolean isEqualsFlag(){
+        return getPsw().isEqualsFlag();
+    }
+    
     /**
      * @return the alu
      */
@@ -129,6 +148,13 @@ public class CPU {
      */
     public MBR getMbr() {
         return mbr;
+    }
+
+    /**
+     * @return the psw
+     */
+    public PSW getPsw() {
+        return psw;
     }
     
     

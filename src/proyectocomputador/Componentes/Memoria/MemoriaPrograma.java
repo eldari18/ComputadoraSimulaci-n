@@ -29,7 +29,6 @@ public class MemoriaPrograma {
         CODOPS_BINARIOS.put("JMP", "0110");
         CODOPS_BINARIOS.put("JZ",  "0111");
         CODOPS_BINARIOS.put("JNZ", "1000");
-        CODOPS_BINARIOS.put("RET", "1001");
     }
     private static final Map<String, String> REGISTROS_BINARIOS = new HashMap<>();
     static {

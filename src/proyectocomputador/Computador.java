@@ -193,7 +193,7 @@ public class Computador extends javax.swing.JPanel {
         // Crear timer para procesamiento secuencial
         Timer timer = new Timer(1000, null);
         final int[] index = {0};
-        final int direccion = 0;
+        final int[] direccion = {0};
         final boolean erroresEncontrados = false;
         final String[] instruccion = {""};
         final String[] instrBin = {""};
@@ -201,17 +201,18 @@ public class Computador extends javax.swing.JPanel {
         timer.addActionListener(e -> {
             switch(index[0]){
                 case 0 -> {
-                    this.FieldPC.setText("0000");
-                    cpu.setContadorPc(0);
+                    this.FieldPC.setText(String.format("%4s", Integer.toBinaryString(direccion[0])).replace(' ', '0'));
+                    System.out.println(direccion[0]);
+                    cpu.setContadorPc(direccion[0]);
                     resaltarRegsitroEstatico(0);
                 }
                 case 1 ->{
-                    this.FieldMAR.setText("0000");
+                    this.FieldMAR.setText(String.format("%4s", Integer.toBinaryString(direccion[0])).replace(' ', '0'));
                     cpu.setDireccionMar(cpu.getContadorPc());
                     resaltarRegsitroEstatico(1);
                 }
                 case 2 -> {
-                    this.FieldBusDirecciones.setText("0000");
+                    this.FieldBusDirecciones.setText(String.format("%4s", Integer.toBinaryString(direccion[0])).replace(' ', '0'));
                     this.FieldBusControl.setText("00");
                     buses.setDireccion(cpu.getDireccionMar());
                     buses.setSeñal("00");
@@ -219,9 +220,9 @@ public class Computador extends javax.swing.JPanel {
                     resaltarBuses(1);
                 }
                 case 3 -> {
-                    instruccion[0] = (memoria.leerPrograma(0))[2];
-                    instrBin[0] = memoria.leerProgramaBinario(0);
-                    resaltarCeldaPrograma(0);
+                    instruccion[0] = (memoria.leerPrograma(direccion[0]))[2];
+                    instrBin[0] = memoria.leerProgramaBinario(direccion[0]);
+                    resaltarCeldaPrograma(direccion[0]);
                 }
                 case 4 ->{
                     this.FieldDatos.setText(instrBin[0]);
@@ -250,9 +251,17 @@ public class Computador extends javax.swing.JPanel {
                     resaltarUC(0);
                     resaltarUC(1);
                     resaltarUC(2);
-                    ejecutarCodop(instruccion[0]);
+                    ejecutarCodop(instruccion[0], timer);
+                }
+                case 9 ->{
+                    System.out.println("REINICIO DE INDEX");
+                    if(direccion[0] < lineas.length-1){
+                        direccion[0]++;
+                        index[0]=0;
+                    }
                 }
                 default -> {
+                    System.out.println("Fin totazo");
                     ((Timer)e.getSource()).stop();
                 }
             }
@@ -262,27 +271,47 @@ public class Computador extends javax.swing.JPanel {
         timer.start();
     }
 
-    private void ejecutarCodop(String instruccion){
+    private void ejecutarCodop(String instruccion, Timer timer){
         String[] linea = instruccion.split("\\s*,\\s*|\\s+");
+        timer.stop();
         switch(linea[0]){
             case "MOV" -> {
-                procesarInstruccionMOV(instruccion);
+                procesarInstruccionMOV(instruccion, val ->{
+                    System.out.println("Fin de operacion");
+                    int index = val;
+                        timer.start();
+                });
                 break;
             }
-            case "SUB", "DIV", "MPY", "ADD" -> {
-                procesarInstruccionOP(instruccion);
+            case "SUB", "DIV", "MPY", "ADD", "CMP" -> {
+                procesarInstruccionOP(instruccion, val ->{
+                    System.out.println("Fin de operacion");
+                    int index = val;
+                        timer.start();
+                });
                 break;
             }
             case "JMP", "JZ", "JNZ" ->{
                 break;
             }
-            case "CMP" ->{
-                break;
-            }
         }
     }
     
-    private void procesarInstruccionMOV(String instruc) {
+    private void senalPSW(int[] valores){
+        if(valores[0] == valores[1]){
+            if(valores[2]==0){
+                cpu.setZeroFlag(true);
+                this.FieldPSW.setText("00");
+            }else{
+                this.FieldPSW.setText("01");
+            }
+            cpu.setEqualsFlag(true);
+        }
+        this.FieldPSW.setText("11");
+        resaltarRegsitroEstatico(5);
+    }
+    
+    private void procesarInstruccionMOV(String instruc, Consumer<Integer> callback) {
         // Procesar efectos en memoria de datos si el destino es una dirección
         String[] partes = instruc.split("\\s*,\\s*|\\s+");
         String destino = partes[1];
@@ -309,6 +338,7 @@ public class Computador extends javax.swing.JPanel {
                         resaltarRegistro(obtenerIndice(destino));
                     }
                     default -> {
+                        callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
                 }
@@ -333,11 +363,14 @@ public class Computador extends javax.swing.JPanel {
                         obtenerValorOrigen(origen, val -> {
                               valor[0] = val;
                         }, timer);
+                        
                     }
                     case 3 ->{
                         llamadoDeBus(destino, valor[0], timer);
+                        
                     }
                     default -> {
+                        callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
                 }
@@ -345,13 +378,14 @@ public class Computador extends javax.swing.JPanel {
             });
             timer.setInitialDelay(1000);
             timer.start();
+            
             // Actualizar la tabla de datos
             memoria.configurarTablaDatos(TableDatos);
             registro.configurarTablaRegistros(TableRegistros);
         }
     }
     
-    private void procesarInstruccionOP(String linea){
+    private void procesarInstruccionOP(String linea, Consumer<Integer> callback){
         // Procesar efectos en memoria de datos si el destino es una dirección
         String[] partes = linea.split("\\s*,\\s*|\\s+");
         String operacion = partes[0];
@@ -404,11 +438,13 @@ public class Computador extends javax.swing.JPanel {
                         resaltarOperandoALU(1);
                     }
                     case 7 ->{
+                        senalPSW(valor);
                         registro.getBancoRegistros().setValorRegistro(destino, valor[2]);
                         registro.getBancoRegistros().configurarTabla(TableRegistros);
                         resaltarRegistro(obtenerIndice(destino));
                     }
                     default -> {
+                        callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
                 }
@@ -456,6 +492,7 @@ public class Computador extends javax.swing.JPanel {
                         resaltarOperandoALU(4);
                     }
                     case 5 ->{
+                        senalPSW(valor);
                         this.FieldALU1.setText(String.format("%9s", Integer.toBinaryString(valor[2])).replace(' ', '0'));
                         resaltarOperandoALU(1);
                     }
@@ -463,6 +500,7 @@ public class Computador extends javax.swing.JPanel {
                         llamadoDeBus(destino, valor[2], timer);
                     }
                     default -> {
+                        callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
                 }
@@ -554,6 +592,7 @@ public class Computador extends javax.swing.JPanel {
                     break;
                 }
                 default ->{
+                    callback.accept(dato);
                     ((Timer)e.getSource()).stop();
                     break;
                 }    
@@ -567,7 +606,8 @@ public class Computador extends javax.swing.JPanel {
     public void llamadoDeBus(String destino, int dato, Timer timer){
         timer.stop();
             guardaBuses(destino, valor -> {
-                resaltarUC(4);
+                int val = valor;
+                System.out.println("Se termino el llamado a bus");
                 timer.start();
             },dato);
     }

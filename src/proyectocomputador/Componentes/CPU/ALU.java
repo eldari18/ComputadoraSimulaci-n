@@ -26,6 +26,8 @@ public class ALU {
                 return operandoA * operandoB;
             case "DIV":
                 return operandoA / operandoB;
+            case "CMP":
+                return operandoA ^ operandoB;
             default:
                 return 0;
         }
