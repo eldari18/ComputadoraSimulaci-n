@@ -132,6 +132,8 @@ public class Computador extends javax.swing.JPanel {
             }
         });
     }
+    
+    public volatile boolean interrupcion = false;
 
     private void guardarInstrucciones() {
         String texto = TextInstrucciones.getText();
@@ -150,6 +152,7 @@ public class Computador extends javax.swing.JPanel {
                 memoria.escribirPrograma(i, "NOP", "Sistema");
             }
         }
+        this.LabelProceso.setText("");
 
         // Dividir por líneas y filtrar líneas vacías
         String[] lineas = Arrays.stream(texto.split("\\r?\\n"))
@@ -198,17 +201,29 @@ public class Computador extends javax.swing.JPanel {
         final String[] instrBin = {""};
         System.out.println("ayuda");
         timer.addActionListener(e -> {
+            if(interrupcion){
+                timer.stop();
+                    interrupcion(valor -> {
+                        direccion[0] = valor;
+                        interrupcion = false;
+                        index[0]=0;
+                        timer.start();
+                    });
+            }
             switch(index[0]){
                 case 0 -> {
                     this.FieldPC.setText(String.format("%4s", Integer.toBinaryString(direccion[0])).replace(' ', '0'));
                     System.out.println(direccion[0]);
                     cpu.setContadorPc(direccion[0]);
                     resaltarRegsitroEstatico(0);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nInicia contador: "+ direccion[0]);
                 }
                 case 1 ->{
                     this.FieldMAR.setText(String.format("%4s", Integer.toBinaryString(direccion[0])).replace(' ', '0'));
+                    cpu.setContadorPc(direccion[0]);
                     cpu.setDireccionMar(cpu.getContadorPc());
                     resaltarRegsitroEstatico(1);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nLleva a la MAR el valor: "+ direccion[0]);
                 }
                 case 2 -> {
                     this.FieldBusDirecciones.setText(String.format("%4s", Integer.toBinaryString(direccion[0])).replace(' ', '0'));
@@ -217,30 +232,36 @@ public class Computador extends javax.swing.JPanel {
                     buses.setSeñal("00");
                     resaltarBuses(0);
                     resaltarBuses(1);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nBuses de Control para leer instruccion y bus de direcciones con la direccion: "+ direccion[0]);
                 }
                 case 3 -> {
                     instruccion[0] = (memoria.leerPrograma(direccion[0]))[2];
                     instrBin[0] = memoria.leerProgramaBinario(direccion[0]);
                     resaltarCeldaPrograma(direccion[0]);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe capta en la memoria de programa la direccion: "+ direccion[0]);
                 }
                 case 4 ->{
                     this.FieldDatos.setText(instrBin[0]);
                     buses.setDato(instrBin[0]);
                     resaltarBuses(2);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe lleva en el bus de datos devuelta el dato: "+ instrBin[0]);
                 }
                 case 5 -> {
                     this.FieldMBR.setText(instrBin[0]);
                     cpu.setDatoMbr(instrBin[0]);
                     resaltarRegsitroEstatico(3);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe guarda en el MBR el dato: "+ instrBin[0]);
                 }
                 case 6 -> {
                     this.FieldIR.setText(instrBin[0]);
                     cpu.cargarIr(instrBin[0]);
                     resaltarRegsitroEstatico(4);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe lleva al IR el dato: "+ instrBin[0] + " para decodificar");
                 }
                 case 7 -> {
                     this.FieldUC.setText(instruccion[0]);
                     resaltarRegsitroEstatico(2);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe decodificó el dato a: "+ instruccion[0]);
                 }
                 case 8 -> {
                     String[] partes = instruccion[0].split("\\s*,\\s*|\\s+");
@@ -252,11 +273,14 @@ public class Computador extends javax.swing.JPanel {
                         resaltarUC(1);
                         resaltarUC(2);
                     }
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe realiza el CODOP: "+ partes[0]);
                     ejecutarCodop(instruccion[0], timer, val ->{
                         direccion[0] = direccion[0] + val;
                     });
+                    
                 }
                 case 9 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe terminó de ejecutar la instruccion: "+ instruccion[0]);
                     System.out.println("REINICIO DE INDEX");
                     if(direccion[0] < lineas.length-1){
                         direccion[0]++;
@@ -264,6 +288,7 @@ public class Computador extends javax.swing.JPanel {
                     }
                 }
                 default -> {
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe termina el proceso.");
                     System.out.println("Fin totazo");
                     ((Timer)e.getSource()).stop();
                 }
@@ -307,22 +332,105 @@ public class Computador extends javax.swing.JPanel {
     
     private void senalPSW(int[] valores){
         if(valores[0] == valores[1] && valores[2]==0){
+            this.LabelProceso.setText(this.LabelProceso.getText() + "\nLos operandos son 0 y el resultado tambien");
             this.FieldPSW.setText("00");
             cpu.setZeroFlag(true);
             cpu.setEqualsFlag(true);
         }else if(valores[0] == valores[1]){
+            this.LabelProceso.setText(this.LabelProceso.getText() + "\nLos operandos son iguales");
             this.FieldPSW.setText("01");
             cpu.setEqualsFlag(true);
         }else if(valores[2]==0){
+            this.LabelProceso.setText(this.LabelProceso.getText() + "\nEl resultado es 0");
             cpu.setZeroFlag(true);
             this.FieldPSW.setText("00");
         }else{
+            this.LabelProceso.setText(this.LabelProceso.getText() + "\nLos operandos son diferentes");
             this.FieldPSW.setText("11");
+            cpu.setEqualsFlag(false);
+            cpu.setZeroFlag(false);
         }
         
         resaltarRegsitroEstatico(5);
     }
     
+    private void interrupcion(Consumer<Integer> callback){
+        Timer timer = new Timer(1000, null);
+        final int[] index = {0, 0};
+        final int direccion = 15;
+        final String dirBin = "1111";
+        final int contador = cpu.getContadorPc();
+        final String contBin = String.format("%4s", Integer.toBinaryString(cpu.getContadorPc())).replace(' ', '0');
+        
+        timer.addActionListener(e ->{
+            switch(index[0]){
+                case 0 ->{
+                    this.FieldUC.setText("INTERRUPTION");
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe generó una Interrupcion");
+                    resaltarRegsitroEstatico(2);
+                }
+                case 1 ->{
+                    this.FieldMAR.setText(dirBin);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe calculó la direccion de interrupcion a: "+ dirBin);
+                    cpu.setDireccionMar(direccion);
+                    resaltarRegsitroEstatico(1);
+                }
+                case 2 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe recupera el PC: "+contBin);
+                    this.FieldPC.setText(contBin);
+                    resaltarRegsitroEstatico(0);
+                }
+                case 3 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe guarda el contador en el MBR: "+ contBin);
+                    this.FieldMBR.setText(contBin);
+                    cpu.setDatoMbr(contBin);
+                    resaltarRegsitroEstatico(3);
+                }
+                case 4 ->{
+                    this.FieldBusControl.setText("10");
+                    this.FieldBusDirecciones.setText(dirBin);
+                    this.FieldDatos.setText(contBin);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nTodos los buses llevan datos: \nControl: 10\nDatos: "+contBin+"\nDirecciones: "+dirBin);
+                    buses.setSeñal("10");
+                    buses.setDireccion(direccion);
+                    buses.setDato(dirBin);
+                    resaltarBuses(0);
+                    resaltarBuses(1);
+                    resaltarBuses(2);
+                }
+                case 5 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe guarda el contador en la memoria de datos");
+                    memoria.escribirDato(direccion, contador);
+                    resaltarDireccionMemoria(direccion);
+                }
+                case 6 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe busca el valor de la interrupcion");
+                    obtenerValorDestino("[15]", valor ->{
+                        index[1] = valor;
+                    }, timer);
+                }
+                case 7 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe guarda valor de interrupcion en el PC");
+                    this.FieldPC.setText(contBin);
+                    cpu.setContadorPc(index[1]);
+                    resaltarRegsitroEstatico(0);
+                }
+                default ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nFinaliza la interrupcion");
+                    callback.accept(index[1]);
+                    ((Timer)e.getSource()).stop();
+                }
+            }
+            index[0]++;
+        });
+        timer.setInitialDelay(1000);
+        timer.start();
+            
+        // Actualizar la tabla de datos
+        memoria.configurarTablaDatos(TableDatos);
+    }
+    
+    //procesos de codop
     private void procesarInstruccionMOV(String instruc, Consumer<Integer> callback) {
         // Procesar efectos en memoria de datos si el destino es una dirección
         String[] partes = instruc.split("\\s*,\\s*|\\s+");
@@ -333,23 +441,30 @@ public class Computador extends javax.swing.JPanel {
         if (destino.startsWith("A") || destino.startsWith("B") || destino.startsWith("C") || destino.startsWith("D")) {
             final int[] index = {0};
             timer.addActionListener(e ->{
+                if(interrupcion){
+                    callback.accept(0);
+                    timer.stop();
+                }
                 switch(index[0]){
                     case 0 ->{
                         resaltarUC(1);
-                        
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nDestino de MOV es: "+ destino);
                     }
                     case 1 ->{
                         resaltarUC(2);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nOrigen de MOV es: "+ origen);
                         obtenerValorOrigen(origen, val -> {
                               valor[0] = val;
                         }, timer);
                     }
                     case 2 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nEl valor del origen fue: "+ valor[0] + " e ira a la direccion: "+ destino);
                         registro.getBancoRegistros().setValorRegistro(destino, valor[0]);
                         registro.getBancoRegistros().configurarTabla(TableRegistros);
                         resaltarRegistro(obtenerIndice(destino));
                     }
                     default -> {
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nFin de MOV");
                         callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
@@ -362,15 +477,21 @@ public class Computador extends javax.swing.JPanel {
             int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
             final int[] index = {0, dirMemoriaDatos};
             timer.addActionListener(e ->{
+                if(interrupcion){
+                    callback.accept(0);
+                    timer.stop();
+                }
                 switch(index[0]){
                     case 0 ->{
                         resaltarUC(1);
                     }
                     case 1 ->{
                         this.FieldUCdestinoValor.setText(String.format("%4s", Integer.toBinaryString(index[1])).replace(' ', '0')); 
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nDestino de MOV es: "+ String.format("%4s", Integer.toBinaryString(index[1])).replace(' ', '0'));
                         resaltarUC(3);
                     }
                     case 2 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nOrigen de MOV es: "+ origen);
                         resaltarUC(2);
                         obtenerValorOrigen(origen, val -> {
                               valor[0] = val;
@@ -378,10 +499,12 @@ public class Computador extends javax.swing.JPanel {
                         
                     }
                     case 3 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nEl valor del origen fue: "+ valor[0] + " e ira a la direccion: "+ destino);
                         llamadoDeBus(destino, valor[0], timer);
                         
                     }
                     default -> {
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nFin de MOV");
                         callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
@@ -408,12 +531,18 @@ public class Computador extends javax.swing.JPanel {
         if (destino.startsWith("A") || destino.startsWith("B") || destino.startsWith("C") || destino.startsWith("D")) {
             final int[] index = {0};
             timer.addActionListener(e ->{
+                if(interrupcion){
+                    callback.accept(0);
+                    timer.stop();
+                }
                 switch(index[0]){
                     case 0 ->{
                         resaltarUC(1);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nRecoger el valor de: "+ destino);
                     }
                     case 1 ->{
                         valor[0] = registro.getBancoRegistros().getValorRegistro(destino);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nValor del destino es: "+ valor[0]);
                         resaltarRegistro(obtenerIndice(destino));
                     }
                     case 2 ->{
@@ -422,6 +551,7 @@ public class Computador extends javax.swing.JPanel {
                     }
                     case 3 ->{
                         resaltarUC(2);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nReconocer el valor de: "+ origen);
                         obtenerValorOrigen(origen, val -> {
                               valor[1] = val;
                         }, timer);
@@ -431,31 +561,38 @@ public class Computador extends javax.swing.JPanel {
                         cpu.setOperacion(operacion);
                         valor[2] = cpu.operar();
                         if(valor[2]>512){
+                            this.LabelProceso.setText(this.LabelProceso.getText() + "\nValor sobrepasado para memoria: "+ valor[2]);
                             JOptionPane.showMessageDialog(this,
                             "Los valores genera un número por encima de 512 o menor que 0,\n los cuales no se reciben.",
                             "Error de resultado",
                             JOptionPane.ERROR_MESSAGE);
+                            callback.accept(0);
                             ((Timer)e.getSource()).stop();
                                 return;
                         }
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nPrimer valor: "+ valor[0]);
                         this.FieldALU1_1.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
                         resaltarOperandoALU(3);
                     }
                     case 5 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nSegundo valor: "+ valor[1]);
                         this.FieldALU1_2.setText(String.format("%9s", Integer.toBinaryString(valor[1])).replace(' ', '0'));
                         resaltarOperandoALU(4);
                     }
                     case 6 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nResultado: "+ valor[2]);
                         this.FieldALU1.setText(String.format("%9s", Integer.toBinaryString(valor[2])).replace(' ', '0'));
                         resaltarOperandoALU(1);
                     }
                     case 7 ->{
                         senalPSW(valor);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nEl resultado será guardado: "+ destino);
                         registro.getBancoRegistros().setValorRegistro(destino, valor[2]);
                         registro.getBancoRegistros().configurarTabla(TableRegistros);
                         resaltarRegistro(obtenerIndice(destino));
                     }
                     default -> {
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nFinaliza la operacion: "+ operacion);
                         callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
@@ -468,50 +605,64 @@ public class Computador extends javax.swing.JPanel {
             int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
             final int[] index = {0, dirMemoriaDatos};
             timer.addActionListener(e ->{
+                if(interrupcion){
+                    callback.accept(0);
+                    timer.stop();
+                }
                 switch(index[0]){
                     case 0 ->{
                         resaltarUC(0);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nRecoger el valor de: "+ destino);
                     }
                     case 1 ->{
                         resaltarUC(1);
                         obtenerValorDestino(destino, val -> {
                               valor[0] = val;
                         }, timer);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nValor del destino es: "+ valor[0]);
                     }
                     case 2 ->{
                         resaltarUC(2);
                         obtenerValorOrigen(origen, val -> {
                               valor[1] = val;
                         }, timer);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nValor del origen es: "+ valor[1]);
                     }
                     case 3 ->{
                         cpu.setOperandos(valor[0], valor[1]);
                         cpu.setOperacion(operacion);
                         valor[2] = cpu.operar();
                         if(valor[2]>512){
+                            this.LabelProceso.setText(this.LabelProceso.getText() + "\nValor sobrepasado para memoria: "+ valor[2]);
                             JOptionPane.showMessageDialog(this,
                             "Los valores genera un número por encima de 512 o menor que 0,\n los cuales no se reciben.",
                             "Error de resultado",
                             JOptionPane.ERROR_MESSAGE);
+                            callback.accept(0);
                             ((Timer)e.getSource()).stop();
                                 return;
                         }
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nPrimer valor: "+ valor[0]);
                         this.FieldALU1_1.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
                         resaltarOperandoALU(3);
                     }
                     case 4 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nSegundo valor: "+ valor[1]);
                         this.FieldALU1_2.setText(String.format("%9s", Integer.toBinaryString(valor[1])).replace(' ', '0'));
                         resaltarOperandoALU(4);
                     }
                     case 5 ->{
                         senalPSW(valor);
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nResultado: "+ valor[2]);
                         this.FieldALU1.setText(String.format("%9s", Integer.toBinaryString(valor[2])).replace(' ', '0'));
                         resaltarOperandoALU(1);
                     }
                     case 6 ->{
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nEl resultado será guardado: "+ destino);
                         llamadoDeBus(destino, valor[2], timer);
                     }
                     default -> {
+                        this.LabelProceso.setText(this.LabelProceso.getText() + "\nFinaliza la operacion: "+ operacion);
                         callback.accept(0);
                         ((Timer)e.getSource()).stop();
                     }
@@ -550,14 +701,21 @@ public class Computador extends javax.swing.JPanel {
         }
     }
     
+    
+    //Paso de buses
     private void pasoBusesMemoriaDatos(String destino, Consumer<Integer> callback, String senal){
         int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
         String dirBin = String.format("%4s", Integer.toBinaryString(dirMemoriaDatos)).replace(' ', '0');
         final int[] index = {0};
         final int[] valor = {0};
         Timer timer = new Timer(1000, e -> {
+            if(interrupcion){
+                    callback.accept(0);
+                    ((Timer)e.getSource()).stop();
+                }
             switch(index[0]){
                 case 0 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe lleva a la MAR el valor: "+ dirBin);
                     this.FieldMAR.setText(dirBin);
                     cpu.setDireccionMar(dirMemoriaDatos);
                     resaltarRegsitroEstatico(1);
@@ -566,6 +724,7 @@ public class Computador extends javax.swing.JPanel {
                 case 1 ->{
                     this.FieldBusDirecciones.setText(dirBin);
                     this.FieldBusControl.setText(senal);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nEl bus de Control tiene la senal: "+ senal + " y el de direcciones tiene: "+ dirBin);
                     buses.setDireccion(dirMemoriaDatos);
                     buses.setSeñal(senal);
                     resaltarBuses(0);
@@ -574,17 +733,20 @@ public class Computador extends javax.swing.JPanel {
                 }
                 case 2 ->{
                     valor[0] = memoria.leerDato(dirMemoriaDatos);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe encontró en la memoria de datos el dato: "+ valor[0]);
                     resaltarDireccionMemoria(dirMemoriaDatos);
                     break;
                 }
                 case 3 ->{
                     this.FieldDatos.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe lleva en el bus de datos el valor: "+ String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
                     buses.setDato(Integer.toString(valor[0]));
                     resaltarBuses(2);
                     break;
                 }
                 case 4 -> {
                     this.FieldMBR.setText(String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe lleva a la MBR el valor: "+ String.format("%9s", Integer.toBinaryString(valor[0])).replace(' ', '0'));
                     cpu.setDatoMbr(Integer.toString(valor[0]));
                     resaltarRegsitroEstatico(3);
                     break;
@@ -604,30 +766,45 @@ public class Computador extends javax.swing.JPanel {
     private void guardaBuses(String destino, Consumer<Integer> callback, int dato){
         int dirMemoriaDatos = Integer.parseInt(destino.substring(1, destino.length() - 1));
         String dirBin = String.format("%4s", Integer.toBinaryString(dirMemoriaDatos)).replace(' ', '0');
+        String datoBin = String.format("%4s", Integer.toBinaryString(dirMemoriaDatos)).replace(' ', '0');
         final int[] index = {0};
         Timer timer = new Timer(1000, e -> {
+            if(interrupcion){
+                callback.accept(0);
+                ((Timer)e.getSource()).stop();
+            }
             switch(index[0]){
                 case 0 ->{
                     this.FieldMAR.setText(dirBin);
+                    this.FieldMBR.setText(datoBin);
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe lleva a la MAR la direccion: "+ dirBin+ "y al MBR el dato: "+ datoBin);
                     cpu.setDireccionMar(dirMemoriaDatos);
+                    cpu.setDatoMbr(datoBin);
                     resaltarRegsitroEstatico(1);
+                    resaltarRegsitroEstatico(3);
                     break;
                 }
                 case 1 ->{
                     this.FieldBusDirecciones.setText(dirBin);
+                    this.FieldDatos.setText(datoBin);
                     this.FieldBusControl.setText("11");
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nTodos los buses llevan datos: \nControl: 11\nDatos: "+datoBin+"\nDirecciones: "+dirBin);
                     buses.setDireccion(dirMemoriaDatos);
                     buses.setSeñal("11");
+                    buses.setDato(datoBin);
                     resaltarBuses(0);
                     resaltarBuses(1);
+                    resaltarBuses(2);
                     break;
                 }
                 case 2 ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe escribio en memoria el valor: "+ dato + " en la direccion: "+dirMemoriaDatos);
                     memoria.escribirDato(dirMemoriaDatos, dato);
                     resaltarDireccionMemoria(dirMemoriaDatos);
                     break;
                 }
                 default ->{
+                    this.LabelProceso.setText(this.LabelProceso.getText() + "\nSe termina el guardado de dato");
                     callback.accept(dato);
                     ((Timer)e.getSource()).stop();
                     break;
@@ -648,6 +825,7 @@ public class Computador extends javax.swing.JPanel {
             },dato);
     }
     
+    //obtencion de datos
     public void obtenerValorDestino(String destino, Consumer<Integer> callback, Timer timer){
         timer.stop();
             pasoBusesMemoriaDatos(destino, valor -> {
@@ -1056,40 +1234,8 @@ public class Computador extends javax.swing.JPanel {
         timer.start();
     }
     
-    private void cargarInstrucciones() {
-        // Crear timer para mostrar instrucciones secuencialmente
-        Timer timer = new Timer(1000, null);
-        final int[] index = {0};
-        final int[] instruccionesMostradas = {0};
-
-        timer.addActionListener(e -> {
-            // Leer la instrucción en la posición actual
-            String[] programa = memoria.leerPrograma(index[0]);
-            String instruccion = programa[0];
-            String tipo = programa[3];
-
-            // Solo mostrar instrucciones de usuario (ignorar "NOP" del sistema)
-            if ("Usuario".equals(tipo) && !"NOP".equals(instruccion)) {
-                System.out.println("Instrucción " + (instruccionesMostradas[0] + 1)
-                        + " (Dirección " + index[0] + "): " + instruccion);
-                instruccionesMostradas[0]++;
-
-                // Resaltar la celda en la tabla de programas
-                resaltarCeldaPrograma(index[0]);
-            }
-
-            index[0]++;
-
-            // Detener el timer cuando se hayan revisado todas las posiciones
-            if (index[0] >= 16) {
-                ((Timer) e.getSource()).stop();
-                System.out.println("Fin de las instrucciones almacenadas");
-            }
-        });
-
-        System.out.println("Cargando instrucciones desde memoria...");
-        timer.setInitialDelay(0);
-        timer.start();
+    private void cargarInterrupcion() {
+        interrupcion = true;
     }
     
     public static void main(String[] args) {
@@ -1156,9 +1302,8 @@ public class Computador extends javax.swing.JPanel {
         LabelInstrucciones = new javax.swing.JLabel();
         PanelProcesos = new javax.swing.JPanel();
         LabelPROCESOS = new javax.swing.JLabel();
-        LabelProceso2 = new javax.swing.JTextField();
-        LabelProceso3 = new javax.swing.JTextField();
-        LabelProceso1 = new javax.swing.JTextField();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        LabelProceso = new javax.swing.JTextArea();
         PanelMemoriaDatos = new javax.swing.JPanel();
         LabelMemoriaDatos = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -1637,17 +1782,11 @@ public class Computador extends javax.swing.JPanel {
         LabelPROCESOS.setForeground(new java.awt.Color(255, 255, 255));
         LabelPROCESOS.setText("Descripción proceso");
 
-        LabelProceso2.setBackground(new java.awt.Color(0, 0, 0));
-        LabelProceso2.setForeground(new java.awt.Color(255, 255, 255));
-        LabelProceso2.setText("...");
-
-        LabelProceso3.setBackground(new java.awt.Color(0, 0, 0));
-        LabelProceso3.setForeground(new java.awt.Color(255, 255, 255));
-        LabelProceso3.setText("...");
-
-        LabelProceso1.setBackground(new java.awt.Color(0, 0, 0));
-        LabelProceso1.setForeground(new java.awt.Color(255, 255, 255));
-        LabelProceso1.setText("...");
+        LabelProceso.setBackground(new java.awt.Color(0, 0, 0));
+        LabelProceso.setColumns(20);
+        LabelProceso.setForeground(new java.awt.Color(255, 255, 255));
+        LabelProceso.setRows(5);
+        jScrollPane4.setViewportView(LabelProceso);
 
         javax.swing.GroupLayout PanelProcesosLayout = new javax.swing.GroupLayout(PanelProcesos);
         PanelProcesos.setLayout(PanelProcesosLayout);
@@ -1655,28 +1794,19 @@ public class Computador extends javax.swing.JPanel {
             PanelProcesosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(PanelProcesosLayout.createSequentialGroup()
                 .addGap(24, 24, 24)
-                .addComponent(LabelPROCESOS)
-                .addContainerGap(329, Short.MAX_VALUE))
-            .addGroup(PanelProcesosLayout.createSequentialGroup()
-                .addContainerGap()
                 .addGroup(PanelProcesosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(LabelProceso2)
-                    .addComponent(LabelProceso3)
-                    .addComponent(LabelProceso1))
-                .addContainerGap())
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 417, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(LabelPROCESOS))
+                .addContainerGap(19, Short.MAX_VALUE))
         );
         PanelProcesosLayout.setVerticalGroup(
             PanelProcesosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(PanelProcesosLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(LabelPROCESOS)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(LabelProceso1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
-                .addComponent(LabelProceso2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(LabelProceso3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(30, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 112, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(14, Short.MAX_VALUE))
         );
 
         PanelMemoriaDatos.setBackground(new java.awt.Color(0, 0, 0));
@@ -1821,7 +1951,7 @@ public class Computador extends javax.swing.JPanel {
     }//GEN-LAST:event_FieldIOActionPerformed
 
     private void ButtonInterrupcionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ButtonInterrupcionActionPerformed
-        cargarInstrucciones();
+        cargarInterrupcion();
     }//GEN-LAST:event_ButtonInterrupcionActionPerformed
 
     private void ButtonEjecutarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ButtonEjecutarActionPerformed
@@ -1868,9 +1998,7 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JLabel LabelPC;
     private javax.swing.JLabel LabelPROCESOS;
     private javax.swing.JLabel LabelPSW;
-    private javax.swing.JTextField LabelProceso1;
-    private javax.swing.JTextField LabelProceso2;
-    private javax.swing.JTextField LabelProceso3;
+    private javax.swing.JTextArea LabelProceso;
     private javax.swing.JLabel LabelRegistros;
     private javax.swing.JLabel LabelUC;
     private javax.swing.JLabel LabelUC1;
@@ -1889,6 +2017,7 @@ public class Computador extends javax.swing.JPanel {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JScrollPane jScrollPane5;
     // End of variables declaration//GEN-END:variables
 }
