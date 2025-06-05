@@ -16,9 +16,9 @@ public class Instruccion {
     public static final String PATRON_DIRECCION = "\\[(1[0-5]|[0-9])\\]";
     public static final String PATRON_NUMERO_SIMPLE = "(5[0-1][0-9]|[1-4][0-9][0-9]|[1-9][0-9]|[0-9])";
     public static final String PATRON_OPERANDO = "(" + PATRON_REGISTRO + "|" + PATRON_DIRECCION + "|" + PATRON_NUMERO_SIMPLE + ")";
-    public static final String PATRON_INSTRUCCION = "^(" + String.join("|", CODIGOS_OPERACION) + ")\\s+"
-            + PATRON_OPERANDO + "\\s*,\\s*" + PATRON_OPERANDO
-            + "(\\s*,\\s*" + PATRON_OPERANDO + ")?$";
+    public static final String PATRON_INSTRUCCION = "^(" + String.join("|", CODIGOS_OPERACION) + ")"
+            + "(\\s+" + PATRON_OPERANDO + "\\s*,\\s*" + PATRON_OPERANDO 
+            + "(\\s*,\\s*" + PATRON_OPERANDO + ")?)?$";
 
     // Atributos (basados en tu diseño de 32 bits)
     private int codop;          // 5 bits: código de operación

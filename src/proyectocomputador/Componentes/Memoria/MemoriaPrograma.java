@@ -94,19 +94,21 @@ public class MemoriaPrograma {
         String codop = CODOPS_BINARIOS.getOrDefault(partes[0], "XXXX");
         String destino = "";
         String origen = "";
-        if(partes[1].matches(instruccion.PATRON_REGISTRO)){
-            destino = REGISTROS_BINARIOS.getOrDefault(partes[1], "XXXX");
-        }else{
-            int numDes = Integer.parseInt(partes[1].substring(1, partes[1].length() - 1));
-            destino = String.format("%6s", Integer.toBinaryString(numDes)).replace(' ', '0');
-        }
-        if(partes[2].matches(instruccion.PATRON_DIRECCION)){
-            int numOri = Integer.parseInt(partes[2].substring(1, partes[2].length() - 1));
-            origen = String.format("%11s", Integer.toBinaryString(numOri)).replace(' ', '0');
-        }else{
-            int numOri = Integer.parseInt(partes[2]);
-            origen = String.format("%9s", Integer.toBinaryString(numOri)).replace(' ', '0');
-            origen = "01"+ origen;
+        if(partes.length == 3){
+            if(partes[1].matches(instruccion.PATRON_REGISTRO)){
+                destino = REGISTROS_BINARIOS.getOrDefault(partes[1], "XXXX");
+            }else{
+                int numDes = Integer.parseInt(partes[1].substring(1, partes[1].length() - 1));
+                destino = String.format("%6s", Integer.toBinaryString(numDes)).replace(' ', '0');
+            }
+            if(partes[2].matches(instruccion.PATRON_DIRECCION)){
+                int numOri = Integer.parseInt(partes[2].substring(1, partes[2].length() - 1));
+                origen = String.format("%11s", Integer.toBinaryString(numOri)).replace(' ', '0');
+            }else{
+                int numOri = Integer.parseInt(partes[2]);
+                origen = String.format("%9s", Integer.toBinaryString(numOri)).replace(' ', '0');
+                origen = "01"+ origen;
+            }
         }
         return codop+destino+origen;
     }

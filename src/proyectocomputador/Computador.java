@@ -194,7 +194,6 @@ public class Computador extends javax.swing.JPanel {
         Timer timer = new Timer(1000, null);
         final int[] index = {0};
         final int[] direccion = {0};
-        final boolean erroresEncontrados = false;
         final String[] instruccion = {""};
         final String[] instrBin = {""};
         System.out.println("ayuda");
@@ -246,12 +245,16 @@ public class Computador extends javax.swing.JPanel {
                 case 8 -> {
                     String[] partes = instruccion[0].split("\\s*,\\s*|\\s+");
                     this.FieldUCcodop.setText(partes[0]);
-                    this.FieldUCdestino.setText(partes[1]);
-                    this.FieldUCorigen.setText(partes[2]);
                     resaltarUC(0);
-                    resaltarUC(1);
-                    resaltarUC(2);
-                    ejecutarCodop(instruccion[0], timer);
+                    if(partes.length == 3){
+                        this.FieldUCdestino.setText(partes[1]);
+                        this.FieldUCorigen.setText(partes[2]);
+                        resaltarUC(1);
+                        resaltarUC(2);
+                    }
+                    ejecutarCodop(instruccion[0], timer, val ->{
+                        direccion[0] = direccion[0] + val;
+                    });
                 }
                 case 9 ->{
                     System.out.println("REINICIO DE INDEX");
@@ -271,14 +274,14 @@ public class Computador extends javax.swing.JPanel {
         timer.start();
     }
 
-    private void ejecutarCodop(String instruccion, Timer timer){
+    private void ejecutarCodop(String instruccion, Timer timer, Consumer<Integer> callback){
         String[] linea = instruccion.split("\\s*,\\s*|\\s+");
         timer.stop();
         switch(linea[0]){
             case "MOV" -> {
                 procesarInstruccionMOV(instruccion, val ->{
                     System.out.println("Fin de operacion");
-                    int index = val;
+                    callback.accept(val);
                         timer.start();
                 });
                 break;
@@ -286,28 +289,37 @@ public class Computador extends javax.swing.JPanel {
             case "SUB", "DIV", "MPY", "ADD", "CMP" -> {
                 procesarInstruccionOP(instruccion, val ->{
                     System.out.println("Fin de operacion");
-                    int index = val;
-                        timer.start();
+                    callback.accept(val);
+                    timer.start();
                 });
                 break;
             }
             case "JMP", "JZ", "JNZ" ->{
+                procesarInstruccionJMP(instruccion, val ->{
+                    System.out.println("Fin de operacion");
+                    callback.accept(val);
+                        timer.start();
+                });
                 break;
             }
         }
     }
     
     private void senalPSW(int[] valores){
-        if(valores[0] == valores[1]){
-            if(valores[2]==0){
-                cpu.setZeroFlag(true);
-                this.FieldPSW.setText("00");
-            }else{
-                this.FieldPSW.setText("01");
-            }
+        if(valores[0] == valores[1] && valores[2]==0){
+            this.FieldPSW.setText("00");
+            cpu.setZeroFlag(true);
             cpu.setEqualsFlag(true);
+        }else if(valores[0] == valores[1]){
+            this.FieldPSW.setText("01");
+            cpu.setEqualsFlag(true);
+        }else if(valores[2]==0){
+            cpu.setZeroFlag(true);
+            this.FieldPSW.setText("00");
+        }else{
+            this.FieldPSW.setText("11");
         }
-        this.FieldPSW.setText("11");
+        
         resaltarRegsitroEstatico(5);
     }
     
@@ -512,6 +524,30 @@ public class Computador extends javax.swing.JPanel {
         // Actualizar la tabla de datos
         memoria.configurarTablaDatos(TableDatos);
         registro.configurarTablaRegistros(TableRegistros);
+    }
+    
+    private void procesarInstruccionJMP(String linea, Consumer<Integer> callback){
+        String[] partes = linea.split("\\s*,\\s*|\\s+");
+        String operacion = partes[0];
+        switch(operacion){
+            case "JMP" -> {
+                callback.accept(1);
+            }
+            case "JZ" -> {
+                if(cpu.isZeroFlag()){
+                    callback.accept(1);
+                }else{
+                    callback.accept(0);
+                }
+            }
+            case "JNZ" -> {
+                if(!cpu.isZeroFlag()){
+                    callback.accept(1);
+                }else{
+                    callback.accept(0);
+                }
+            }
+        }
     }
     
     private void pasoBusesMemoriaDatos(String destino, Consumer<Integer> callback, String senal){
